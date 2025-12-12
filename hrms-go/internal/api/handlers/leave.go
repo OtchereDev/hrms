@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	frappeResponse "github.com/OtchereDev/hrms-go/internal/core/frappe"
 	"strconv"
 	"time"
 
@@ -28,20 +29,20 @@ func NewLeaveHandler(db *gorm.DB) *LeaveHandler {
 func (h *LeaveHandler) ApplyLeave(c *fiber.Ctx) error {
 	var req leave.ApplyLeaveRequest
 	if err := c.BodyParser(&req); err != nil {
-		return response.BadRequest(c, "invalid request body")
+		return frappeResponse.SendBadRequest(c, "invalid request body")
 	}
 
 	leaveApp, err := h.leaveService.ApplyLeave(c.Context(), &req)
 	if err != nil {
 		switch err {
 		case leave.ErrInsufficientLeaveBalance:
-			return response.BadRequest(c, "insufficient leave balance")
+			return frappeResponse.SendBadRequest(c, "insufficient leave balance")
 		case leave.ErrOverlappingLeaves:
 			return response.Conflict(c, "overlapping leave applications exist")
 		case leave.ErrEmployeeRequired, leave.ErrLeaveTypeRequired, leave.ErrInvalidDates:
-			return response.BadRequest(c, err.Error())
+			return frappeResponse.SendBadRequest(c, err.Error())
 		default:
-			return response.InternalServerError(c, "failed to apply for leave")
+			return frappeResponse.SendInternalError(c, "failed to apply for leave")
 		}
 	}
 
@@ -53,23 +54,23 @@ func (h *LeaveHandler) ApplyLeave(c *fiber.Ctx) error {
 func (h *LeaveHandler) GetLeaveApplication(c *fiber.Ctx) error {
 	idStr := c.Query("id")
 	if idStr == "" {
-		return response.BadRequest(c, "id is required")
+		return frappeResponse.SendBadRequest(c, "id is required")
 	}
 
 	id, err := strconv.ParseUint(idStr, 10, 32)
 	if err != nil {
-		return response.BadRequest(c, "invalid id")
+		return frappeResponse.SendBadRequest(c, "invalid id")
 	}
 
 	leaveApp, err := h.leaveService.GetLeaveApplicationByID(c.Context(), uint(id))
 	if err != nil {
 		if err == leave.ErrLeaveApplicationNotFound {
-			return response.NotFound(c, "leave application not found")
+			return frappeResponse.SendNotFound(c, "leave application not found")
 		}
-		return response.InternalServerError(c, "failed to get leave application")
+		return frappeResponse.SendInternalError(c, "failed to get leave application")
 	}
 
-	return response.Success(c, leaveApp, "success")
+	return frappeResponse.SendSuccess(c, leaveApp)
 }
 
 // ListLeaveApplications retrieves leave applications with filters
@@ -100,7 +101,7 @@ func (h *LeaveHandler) ListLeaveApplications(c *fiber.Ctx) error {
 
 	leaves, total, err := h.leaveService.ListLeaveApplications(c.Context(), filters, page, pageSize)
 	if err != nil {
-		return response.InternalServerError(c, "failed to list leave applications")
+		return frappeResponse.SendInternalError(c, "failed to list leave applications")
 	}
 
 	return response.Paginated(c, leaves, page, pageSize, total)
@@ -113,27 +114,27 @@ func (h *LeaveHandler) ApproveLeaveApplication(c *fiber.Ctx) error {
 	approver := c.Query("approver")
 
 	if idStr == "" {
-		return response.BadRequest(c, "id is required")
+		return frappeResponse.SendBadRequest(c, "id is required")
 	}
 
 	id, err := strconv.ParseUint(idStr, 10, 32)
 	if err != nil {
-		return response.BadRequest(c, "invalid id")
+		return frappeResponse.SendBadRequest(c, "invalid id")
 	}
 
 	leaveApp, err := h.leaveService.ApproveLeaveApplication(c.Context(), uint(id), approver)
 	if err != nil {
 		switch err {
 		case leave.ErrLeaveApplicationNotFound:
-			return response.NotFound(c, "leave application not found")
+			return frappeResponse.SendNotFound(c, "leave application not found")
 		case leave.ErrInsufficientLeaveBalance:
-			return response.BadRequest(c, "insufficient leave balance")
+			return frappeResponse.SendBadRequest(c, "insufficient leave balance")
 		default:
-			return response.InternalServerError(c, "failed to approve leave application")
+			return frappeResponse.SendInternalError(c, "failed to approve leave application")
 		}
 	}
 
-	return response.Success(c, leaveApp, "Leave application approved successfully")
+	return frappeResponse.SendSuccess(c, leaveApp)
 }
 
 // RejectLeaveApplication rejects a leave application
@@ -144,23 +145,23 @@ func (h *LeaveHandler) RejectLeaveApplication(c *fiber.Ctx) error {
 	reason := c.Query("reason")
 
 	if idStr == "" {
-		return response.BadRequest(c, "id is required")
+		return frappeResponse.SendBadRequest(c, "id is required")
 	}
 
 	id, err := strconv.ParseUint(idStr, 10, 32)
 	if err != nil {
-		return response.BadRequest(c, "invalid id")
+		return frappeResponse.SendBadRequest(c, "invalid id")
 	}
 
 	leaveApp, err := h.leaveService.RejectLeaveApplication(c.Context(), uint(id), approver, reason)
 	if err != nil {
 		if err == leave.ErrLeaveApplicationNotFound {
-			return response.NotFound(c, "leave application not found")
+			return frappeResponse.SendNotFound(c, "leave application not found")
 		}
-		return response.InternalServerError(c, "failed to reject leave application")
+		return frappeResponse.SendInternalError(c, "failed to reject leave application")
 	}
 
-	return response.Success(c, leaveApp, "Leave application rejected successfully")
+	return frappeResponse.SendSuccess(c, leaveApp)
 }
 
 // CancelLeaveApplication cancels a leave application
@@ -169,23 +170,23 @@ func (h *LeaveHandler) CancelLeaveApplication(c *fiber.Ctx) error {
 	idStr := c.Query("id")
 
 	if idStr == "" {
-		return response.BadRequest(c, "id is required")
+		return frappeResponse.SendBadRequest(c, "id is required")
 	}
 
 	id, err := strconv.ParseUint(idStr, 10, 32)
 	if err != nil {
-		return response.BadRequest(c, "invalid id")
+		return frappeResponse.SendBadRequest(c, "invalid id")
 	}
 
 	leaveApp, err := h.leaveService.CancelLeaveApplication(c.Context(), uint(id))
 	if err != nil {
 		if err == leave.ErrLeaveApplicationNotFound {
-			return response.NotFound(c, "leave application not found")
+			return frappeResponse.SendNotFound(c, "leave application not found")
 		}
-		return response.InternalServerError(c, "failed to cancel leave application")
+		return frappeResponse.SendInternalError(c, "failed to cancel leave application")
 	}
 
-	return response.Success(c, leaveApp, "Leave application cancelled successfully")
+	return frappeResponse.SendSuccess(c, leaveApp)
 }
 
 // AllocateLeave allocates leaves to an employee
@@ -193,18 +194,18 @@ func (h *LeaveHandler) CancelLeaveApplication(c *fiber.Ctx) error {
 func (h *LeaveHandler) AllocateLeave(c *fiber.Ctx) error {
 	var req leave.AllocateLeaveRequest
 	if err := c.BodyParser(&req); err != nil {
-		return response.BadRequest(c, "invalid request body")
+		return frappeResponse.SendBadRequest(c, "invalid request body")
 	}
 
 	allocation, err := h.leaveService.AllocateLeave(c.Context(), &req)
 	if err != nil {
 		switch err {
 		case leave.ErrEmployeeRequired, leave.ErrLeaveTypeRequired, leave.ErrInvalidDates:
-			return response.BadRequest(c, err.Error())
+			return frappeResponse.SendBadRequest(c, err.Error())
 		case leave.ErrLeaveTypeNotFound:
-			return response.NotFound(c, "leave type not found")
+			return frappeResponse.SendNotFound(c, "leave type not found")
 		default:
-			return response.InternalServerError(c, "failed to allocate leave")
+			return frappeResponse.SendInternalError(c, "failed to allocate leave")
 		}
 	}
 
@@ -218,17 +219,17 @@ func (h *LeaveHandler) GetLeaveBalance(c *fiber.Ctx) error {
 	leaveType := c.Query("leave_type")
 
 	if employee == "" {
-		return response.BadRequest(c, "employee is required")
+		return frappeResponse.SendBadRequest(c, "employee is required")
 	}
 
 	if leaveType != "" {
 		// Get balance for specific leave type
 		balance, err := h.leaveService.GetLeaveBalance(c.Context(), employee, leaveType)
 		if err != nil {
-			return response.InternalServerError(c, "failed to get leave balance")
+			return frappeResponse.SendInternalError(c, "failed to get leave balance")
 		}
 
-		return response.Success(c, fiber.Map{
+		return frappeResponse.SendSuccess(c, fiber.Map{
 			"employee":   employee,
 			"leave_type": leaveType,
 			"balance":    balance,
@@ -238,10 +239,10 @@ func (h *LeaveHandler) GetLeaveBalance(c *fiber.Ctx) error {
 	// Get all leave balances
 	balances, err := h.leaveService.GetAllLeaveBalances(c.Context(), employee)
 	if err != nil {
-		return response.InternalServerError(c, "failed to get leave balances")
+		return frappeResponse.SendInternalError(c, "failed to get leave balances")
 	}
 
-	return response.Success(c, fiber.Map{
+	return frappeResponse.SendSuccess(c, fiber.Map{
 		"employee": employee,
 		"balances": balances,
 	}, "success")
@@ -252,10 +253,10 @@ func (h *LeaveHandler) GetLeaveBalance(c *fiber.Ctx) error {
 func (h *LeaveHandler) GetActiveLeaveTypes(c *fiber.Ctx) error {
 	leaveTypes, err := h.leaveService.GetActiveLeaveTypes(c.Context())
 	if err != nil {
-		return response.InternalServerError(c, "failed to get leave types")
+		return frappeResponse.SendInternalError(c, "failed to get leave types")
 	}
 
-	return response.Success(c, leaveTypes, "success")
+	return frappeResponse.SendSuccess(c, leaveTypes)
 }
 
 // CreateLeaveEncashment creates a leave encashment request
@@ -266,23 +267,23 @@ func (h *LeaveHandler) CreateLeaveEncashment(c *fiber.Ctx) error {
 	encashableDaysStr := c.Query("encashable_days")
 
 	if employee == "" || leaveType == "" || encashableDaysStr == "" {
-		return response.BadRequest(c, "employee, leave_type, and encashable_days are required")
+		return frappeResponse.SendBadRequest(c, "employee, leave_type, and encashable_days are required")
 	}
 
 	encashableDays, err := strconv.ParseFloat(encashableDaysStr, 64)
 	if err != nil {
-		return response.BadRequest(c, "invalid encashable_days")
+		return frappeResponse.SendBadRequest(c, "invalid encashable_days")
 	}
 
 	encashment, err := h.leaveService.CreateLeaveEncashment(c.Context(), employee, leaveType, encashableDays)
 	if err != nil {
 		switch err {
 		case leave.ErrInsufficientLeaveBalance:
-			return response.BadRequest(c, "insufficient leave balance")
+			return frappeResponse.SendBadRequest(c, "insufficient leave balance")
 		case leave.ErrEmployeeRequired, leave.ErrLeaveTypeRequired:
-			return response.BadRequest(c, err.Error())
+			return frappeResponse.SendBadRequest(c, err.Error())
 		default:
-			return response.InternalServerError(c, "failed to create leave encashment")
+			return frappeResponse.SendInternalError(c, "failed to create leave encashment")
 		}
 	}
 
@@ -297,20 +298,20 @@ func (h *LeaveHandler) GetLeaveDetails(c *fiber.Ctx) error {
 	forSalarySlip := c.Query("for_salary_slip") == "1"
 
 	if employee == "" || dateStr == "" {
-		return response.BadRequest(c, "employee and date are required")
+		return frappeResponse.SendBadRequest(c, "employee and date are required")
 	}
 
 	date, err := time.Parse("2006-01-02", dateStr)
 	if err != nil {
-		return response.BadRequest(c, "invalid date format, expected YYYY-MM-DD")
+		return frappeResponse.SendBadRequest(c, "invalid date format, expected YYYY-MM-DD")
 	}
 
 	leaveDetails, err := h.leaveService.GetLeaveDetails(c.Context(), employee, date, forSalarySlip)
 	if err != nil {
-		return response.InternalServerError(c, "failed to get leave details")
+		return frappeResponse.SendInternalError(c, "failed to get leave details")
 	}
 
-	return response.Success(c, leaveDetails, "Leave details retrieved successfully")
+	return frappeResponse.SendSuccess(c, leaveDetails)
 }
 
 // GetNumberOfLeaveDays calculates the number of leave days
@@ -324,34 +325,34 @@ func (h *LeaveHandler) GetNumberOfLeaveDays(c *fiber.Ctx) error {
 	halfDayDateStr := c.Query("half_day_date")
 
 	if employee == "" || leaveType == "" || fromDateStr == "" || toDateStr == "" {
-		return response.BadRequest(c, "employee, leave_type, from_date, and to_date are required")
+		return frappeResponse.SendBadRequest(c, "employee, leave_type, from_date, and to_date are required")
 	}
 
 	fromDate, err := time.Parse("2006-01-02", fromDateStr)
 	if err != nil {
-		return response.BadRequest(c, "invalid from_date format, expected YYYY-MM-DD")
+		return frappeResponse.SendBadRequest(c, "invalid from_date format, expected YYYY-MM-DD")
 	}
 
 	toDate, err := time.Parse("2006-01-02", toDateStr)
 	if err != nil {
-		return response.BadRequest(c, "invalid to_date format, expected YYYY-MM-DD")
+		return frappeResponse.SendBadRequest(c, "invalid to_date format, expected YYYY-MM-DD")
 	}
 
 	var halfDayDate *time.Time
 	if halfDayDateStr != "" {
 		hdd, err := time.Parse("2006-01-02", halfDayDateStr)
 		if err != nil {
-			return response.BadRequest(c, "invalid half_day_date format, expected YYYY-MM-DD")
+			return frappeResponse.SendBadRequest(c, "invalid half_day_date format, expected YYYY-MM-DD")
 		}
 		halfDayDate = &hdd
 	}
 
 	days, err := h.leaveService.GetNumberOfLeaveDays(c.Context(), employee, leaveType, fromDate, toDate, halfDay, halfDayDate)
 	if err != nil {
-		return response.InternalServerError(c, "failed to calculate leave days")
+		return frappeResponse.SendInternalError(c, "failed to calculate leave days")
 	}
 
-	return response.Success(c, map[string]interface{}{"leave_days": days}, "Leave days calculated successfully")
+	return frappeResponse.SendSuccess(c, map[string]interface{}{"leave_days": days})
 }
 
 // GetLeaveBalanceOn returns the leave balance on a specific date
@@ -362,20 +363,20 @@ func (h *LeaveHandler) GetLeaveBalanceOn(c *fiber.Ctx) error {
 	dateStr := c.Query("date")
 
 	if employee == "" || leaveType == "" || dateStr == "" {
-		return response.BadRequest(c, "employee, leave_type, and date are required")
+		return frappeResponse.SendBadRequest(c, "employee, leave_type, and date are required")
 	}
 
 	date, err := time.Parse("2006-01-02", dateStr)
 	if err != nil {
-		return response.BadRequest(c, "invalid date format, expected YYYY-MM-DD")
+		return frappeResponse.SendBadRequest(c, "invalid date format, expected YYYY-MM-DD")
 	}
 
 	balance, err := h.leaveService.GetLeaveBalanceOn(c.Context(), employee, leaveType, date)
 	if err != nil {
-		return response.InternalServerError(c, "failed to get leave balance")
+		return frappeResponse.SendInternalError(c, "failed to get leave balance")
 	}
 
-	return response.Success(c, map[string]interface{}{"leave_balance": balance}, "Leave balance retrieved successfully")
+	return frappeResponse.SendSuccess(c, map[string]interface{}{"leave_balance": balance})
 }
 
 // GetLeavesForPeriod returns all approved leaves for an employee in a date range
@@ -386,23 +387,23 @@ func (h *LeaveHandler) GetLeavesForPeriod(c *fiber.Ctx) error {
 	toDateStr := c.Query("to_date")
 
 	if employee == "" || fromDateStr == "" || toDateStr == "" {
-		return response.BadRequest(c, "employee, from_date, and to_date are required")
+		return frappeResponse.SendBadRequest(c, "employee, from_date, and to_date are required")
 	}
 
 	fromDate, err := time.Parse("2006-01-02", fromDateStr)
 	if err != nil {
-		return response.BadRequest(c, "invalid from_date format, expected YYYY-MM-DD")
+		return frappeResponse.SendBadRequest(c, "invalid from_date format, expected YYYY-MM-DD")
 	}
 
 	toDate, err := time.Parse("2006-01-02", toDateStr)
 	if err != nil {
-		return response.BadRequest(c, "invalid to_date format, expected YYYY-MM-DD")
+		return frappeResponse.SendBadRequest(c, "invalid to_date format, expected YYYY-MM-DD")
 	}
 
 	leaves, err := h.leaveService.GetLeavesForPeriod(c.Context(), employee, fromDate, toDate)
 	if err != nil {
-		return response.InternalServerError(c, "failed to get leaves for period")
+		return frappeResponse.SendInternalError(c, "failed to get leaves for period")
 	}
 
-	return response.Success(c, leaves, "Leaves for period retrieved successfully")
+	return frappeResponse.SendSuccess(c, leaves)
 }

@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	frappeResponse "github.com/OtchereDev/hrms-go/internal/core/frappe"
 	"strconv"
 	"time"
 
@@ -30,18 +31,18 @@ func NewPerformanceHandler(db *gorm.DB) *PerformanceHandler {
 func (h *PerformanceHandler) CreateAppraisal(c *fiber.Ctx) error {
 	var req performance.CreateAppraisalRequest
 	if err := c.BodyParser(&req); err != nil {
-		return response.BadRequest(c, "invalid request body")
+		return frappeResponse.SendBadRequest(c, "invalid request body")
 	}
 
 	appraisal, err := h.performanceService.CreateAppraisal(c.Context(), &req)
 	if err != nil {
 		switch err {
 		case performance.ErrEmployeeRequired:
-			return response.BadRequest(c, "employee is required")
+			return frappeResponse.SendBadRequest(c, "employee is required")
 		case performance.ErrTemplateNotFound:
-			return response.NotFound(c, "appraisal template not found")
+			return frappeResponse.SendNotFound(c, "appraisal template not found")
 		default:
-			return response.InternalServerError(c, "failed to create appraisal")
+			return frappeResponse.SendInternalError(c, "failed to create appraisal")
 		}
 	}
 
@@ -53,23 +54,23 @@ func (h *PerformanceHandler) CreateAppraisal(c *fiber.Ctx) error {
 func (h *PerformanceHandler) GetAppraisal(c *fiber.Ctx) error {
 	idStr := c.Query("id")
 	if idStr == "" {
-		return response.BadRequest(c, "id is required")
+		return frappeResponse.SendBadRequest(c, "id is required")
 	}
 
 	id, err := strconv.ParseUint(idStr, 10, 32)
 	if err != nil {
-		return response.BadRequest(c, "invalid id")
+		return frappeResponse.SendBadRequest(c, "invalid id")
 	}
 
 	appraisal, err := h.performanceService.GetAppraisalByID(c.Context(), uint(id))
 	if err != nil {
 		if err == performance.ErrAppraisalNotFound {
-			return response.NotFound(c, "appraisal not found")
+			return frappeResponse.SendNotFound(c, "appraisal not found")
 		}
-		return response.InternalServerError(c, "failed to get appraisal")
+		return frappeResponse.SendInternalError(c, "failed to get appraisal")
 	}
 
-	return response.Success(c, appraisal, "success")
+	return frappeResponse.SendSuccess(c, appraisal)
 }
 
 // UpdateAppraisal updates an appraisal
@@ -77,28 +78,28 @@ func (h *PerformanceHandler) GetAppraisal(c *fiber.Ctx) error {
 func (h *PerformanceHandler) UpdateAppraisal(c *fiber.Ctx) error {
 	idStr := c.Query("id")
 	if idStr == "" {
-		return response.BadRequest(c, "id is required")
+		return frappeResponse.SendBadRequest(c, "id is required")
 	}
 
 	id, err := strconv.ParseUint(idStr, 10, 32)
 	if err != nil {
-		return response.BadRequest(c, "invalid id")
+		return frappeResponse.SendBadRequest(c, "invalid id")
 	}
 
 	var req performance.UpdateAppraisalRequest
 	if err := c.BodyParser(&req); err != nil {
-		return response.BadRequest(c, "invalid request body")
+		return frappeResponse.SendBadRequest(c, "invalid request body")
 	}
 
 	appraisal, err := h.performanceService.UpdateAppraisal(c.Context(), uint(id), &req)
 	if err != nil {
 		if err == performance.ErrAppraisalNotFound {
-			return response.NotFound(c, "appraisal not found")
+			return frappeResponse.SendNotFound(c, "appraisal not found")
 		}
-		return response.InternalServerError(c, "failed to update appraisal")
+		return frappeResponse.SendInternalError(c, "failed to update appraisal")
 	}
 
-	return response.Success(c, appraisal, "Appraisal updated successfully")
+	return frappeResponse.SendSuccess(c, appraisal)
 }
 
 // SubmitAppraisal submits an appraisal
@@ -106,23 +107,23 @@ func (h *PerformanceHandler) UpdateAppraisal(c *fiber.Ctx) error {
 func (h *PerformanceHandler) SubmitAppraisal(c *fiber.Ctx) error {
 	idStr := c.Query("id")
 	if idStr == "" {
-		return response.BadRequest(c, "id is required")
+		return frappeResponse.SendBadRequest(c, "id is required")
 	}
 
 	id, err := strconv.ParseUint(idStr, 10, 32)
 	if err != nil {
-		return response.BadRequest(c, "invalid id")
+		return frappeResponse.SendBadRequest(c, "invalid id")
 	}
 
 	appraisal, err := h.performanceService.SubmitAppraisal(c.Context(), uint(id))
 	if err != nil {
 		if err == performance.ErrAppraisalNotFound {
-			return response.NotFound(c, "appraisal not found")
+			return frappeResponse.SendNotFound(c, "appraisal not found")
 		}
-		return response.InternalServerError(c, "failed to submit appraisal")
+		return frappeResponse.SendInternalError(c, "failed to submit appraisal")
 	}
 
-	return response.Success(c, appraisal, "Appraisal submitted successfully")
+	return frappeResponse.SendSuccess(c, appraisal)
 }
 
 // CompleteAppraisal completes an appraisal
@@ -132,28 +133,28 @@ func (h *PerformanceHandler) CompleteAppraisal(c *fiber.Ctx) error {
 	finalScoreStr := c.Query("final_score")
 
 	if idStr == "" || finalScoreStr == "" {
-		return response.BadRequest(c, "id and final_score are required")
+		return frappeResponse.SendBadRequest(c, "id and final_score are required")
 	}
 
 	id, err := strconv.ParseUint(idStr, 10, 32)
 	if err != nil {
-		return response.BadRequest(c, "invalid id")
+		return frappeResponse.SendBadRequest(c, "invalid id")
 	}
 
 	finalScore, err := strconv.ParseFloat(finalScoreStr, 64)
 	if err != nil {
-		return response.BadRequest(c, "invalid final_score")
+		return frappeResponse.SendBadRequest(c, "invalid final_score")
 	}
 
 	appraisal, err := h.performanceService.CompleteAppraisal(c.Context(), uint(id), finalScore)
 	if err != nil {
 		if err == performance.ErrAppraisalNotFound {
-			return response.NotFound(c, "appraisal not found")
+			return frappeResponse.SendNotFound(c, "appraisal not found")
 		}
-		return response.InternalServerError(c, "failed to complete appraisal")
+		return frappeResponse.SendInternalError(c, "failed to complete appraisal")
 	}
 
-	return response.Success(c, appraisal, "Appraisal completed successfully")
+	return frappeResponse.SendSuccess(c, appraisal)
 }
 
 // ListAppraisals retrieves appraisals with filters
@@ -184,7 +185,7 @@ func (h *PerformanceHandler) ListAppraisals(c *fiber.Ctx) error {
 
 	appraisals, total, err := h.performanceService.ListAppraisals(c.Context(), filters, page, pageSize)
 	if err != nil {
-		return response.InternalServerError(c, "failed to list appraisals")
+		return frappeResponse.SendInternalError(c, "failed to list appraisals")
 	}
 
 	return response.Paginated(c, appraisals, page, pageSize, total)
@@ -197,15 +198,15 @@ func (h *PerformanceHandler) ListAppraisals(c *fiber.Ctx) error {
 func (h *PerformanceHandler) CreateGoal(c *fiber.Ctx) error {
 	var req performance.CreateGoalRequest
 	if err := c.BodyParser(&req); err != nil {
-		return response.BadRequest(c, "invalid request body")
+		return frappeResponse.SendBadRequest(c, "invalid request body")
 	}
 
 	goal, err := h.performanceService.CreateGoal(c.Context(), &req)
 	if err != nil {
 		if err == performance.ErrEmployeeRequired {
-			return response.BadRequest(c, "employee is required")
+			return frappeResponse.SendBadRequest(c, "employee is required")
 		}
-		return response.InternalServerError(c, "failed to create goal")
+		return frappeResponse.SendInternalError(c, "failed to create goal")
 	}
 
 	return response.Created(c, goal, "Goal created successfully")
@@ -216,23 +217,23 @@ func (h *PerformanceHandler) CreateGoal(c *fiber.Ctx) error {
 func (h *PerformanceHandler) GetGoal(c *fiber.Ctx) error {
 	idStr := c.Query("id")
 	if idStr == "" {
-		return response.BadRequest(c, "id is required")
+		return frappeResponse.SendBadRequest(c, "id is required")
 	}
 
 	id, err := strconv.ParseUint(idStr, 10, 32)
 	if err != nil {
-		return response.BadRequest(c, "invalid id")
+		return frappeResponse.SendBadRequest(c, "invalid id")
 	}
 
 	goal, err := h.performanceService.GetGoalByID(c.Context(), uint(id))
 	if err != nil {
 		if err == performance.ErrGoalNotFound {
-			return response.NotFound(c, "goal not found")
+			return frappeResponse.SendNotFound(c, "goal not found")
 		}
-		return response.InternalServerError(c, "failed to get goal")
+		return frappeResponse.SendInternalError(c, "failed to get goal")
 	}
 
-	return response.Success(c, goal, "success")
+	return frappeResponse.SendSuccess(c, goal)
 }
 
 // UpdateGoal updates a goal
@@ -240,32 +241,32 @@ func (h *PerformanceHandler) GetGoal(c *fiber.Ctx) error {
 func (h *PerformanceHandler) UpdateGoal(c *fiber.Ctx) error {
 	idStr := c.Query("id")
 	if idStr == "" {
-		return response.BadRequest(c, "id is required")
+		return frappeResponse.SendBadRequest(c, "id is required")
 	}
 
 	id, err := strconv.ParseUint(idStr, 10, 32)
 	if err != nil {
-		return response.BadRequest(c, "invalid id")
+		return frappeResponse.SendBadRequest(c, "invalid id")
 	}
 
 	var req performance.UpdateGoalRequest
 	if err := c.BodyParser(&req); err != nil {
-		return response.BadRequest(c, "invalid request body")
+		return frappeResponse.SendBadRequest(c, "invalid request body")
 	}
 
 	goal, err := h.performanceService.UpdateGoal(c.Context(), uint(id), &req)
 	if err != nil {
 		switch err {
 		case performance.ErrGoalNotFound:
-			return response.NotFound(c, "goal not found")
+			return frappeResponse.SendNotFound(c, "goal not found")
 		case performance.ErrInvalidProgress:
-			return response.BadRequest(c, "progress must be between 0 and 100")
+			return frappeResponse.SendBadRequest(c, "progress must be between 0 and 100")
 		default:
-			return response.InternalServerError(c, "failed to update goal")
+			return frappeResponse.SendInternalError(c, "failed to update goal")
 		}
 	}
 
-	return response.Success(c, goal, "Goal updated successfully")
+	return frappeResponse.SendSuccess(c, goal)
 }
 
 // ListGoals retrieves goals with filters
@@ -283,7 +284,7 @@ func (h *PerformanceHandler) ListGoals(c *fiber.Ctx) error {
 
 	goals, total, err := h.performanceService.ListGoals(c.Context(), filters, page, pageSize)
 	if err != nil {
-		return response.InternalServerError(c, "failed to list goals")
+		return frappeResponse.SendInternalError(c, "failed to list goals")
 	}
 
 	return response.Paginated(c, goals, page, pageSize, total)
@@ -294,15 +295,15 @@ func (h *PerformanceHandler) ListGoals(c *fiber.Ctx) error {
 func (h *PerformanceHandler) GetActiveGoalsForEmployee(c *fiber.Ctx) error {
 	employee := c.Query("employee")
 	if employee == "" {
-		return response.BadRequest(c, "employee is required")
+		return frappeResponse.SendBadRequest(c, "employee is required")
 	}
 
 	goals, err := h.performanceService.GetActiveGoalsForEmployee(c.Context(), employee)
 	if err != nil {
-		return response.InternalServerError(c, "failed to get active goals")
+		return frappeResponse.SendInternalError(c, "failed to get active goals")
 	}
 
-	return response.Success(c, goals, "success")
+	return frappeResponse.SendSuccess(c, goals)
 }
 
 // ========== 360-Degree Feedback Operations ==========
@@ -312,15 +313,15 @@ func (h *PerformanceHandler) GetActiveGoalsForEmployee(c *fiber.Ctx) error {
 func (h *PerformanceHandler) CreateFeedback(c *fiber.Ctx) error {
 	var req performance.CreateFeedbackRequest
 	if err := c.BodyParser(&req); err != nil {
-		return response.BadRequest(c, "invalid request body")
+		return frappeResponse.SendBadRequest(c, "invalid request body")
 	}
 
 	feedback, err := h.performanceService.CreateFeedback(c.Context(), &req)
 	if err != nil {
 		if err == performance.ErrEmployeeRequired {
-			return response.BadRequest(c, "employee is required")
+			return frappeResponse.SendBadRequest(c, "employee is required")
 		}
-		return response.InternalServerError(c, "failed to create feedback")
+		return frappeResponse.SendInternalError(c, "failed to create feedback")
 	}
 
 	return response.Created(c, feedback, "Feedback created successfully")
@@ -333,15 +334,15 @@ func (h *PerformanceHandler) GetFeedbackForEmployee(c *fiber.Ctx) error {
 	cycle := c.Query("cycle")
 
 	if employee == "" {
-		return response.BadRequest(c, "employee is required")
+		return frappeResponse.SendBadRequest(c, "employee is required")
 	}
 
 	feedbacks, err := h.performanceService.GetFeedbackForEmployee(c.Context(), employee, cycle)
 	if err != nil {
-		return response.InternalServerError(c, "failed to get feedback")
+		return frappeResponse.SendInternalError(c, "failed to get feedback")
 	}
 
-	return response.Success(c, feedbacks, "success")
+	return frappeResponse.SendSuccess(c, feedbacks)
 }
 
 // ========== Skill Map Operations ==========
@@ -351,18 +352,18 @@ func (h *PerformanceHandler) GetFeedbackForEmployee(c *fiber.Ctx) error {
 func (h *PerformanceHandler) CreateOrUpdateSkillMap(c *fiber.Ctx) error {
 	var req performance.CreateOrUpdateSkillMapRequest
 	if err := c.BodyParser(&req); err != nil {
-		return response.BadRequest(c, "invalid request body")
+		return frappeResponse.SendBadRequest(c, "invalid request body")
 	}
 
 	skillMap, err := h.performanceService.CreateOrUpdateSkillMap(c.Context(), &req)
 	if err != nil {
 		if err == performance.ErrEmployeeRequired {
-			return response.BadRequest(c, "employee is required")
+			return frappeResponse.SendBadRequest(c, "employee is required")
 		}
-		return response.InternalServerError(c, "failed to create or update skill map")
+		return frappeResponse.SendInternalError(c, "failed to create or update skill map")
 	}
 
-	return response.Success(c, skillMap, "Skill map saved successfully")
+	return frappeResponse.SendSuccess(c, skillMap)
 }
 
 // GetSkillMapByEmployee retrieves skill map for an employee
@@ -370,18 +371,18 @@ func (h *PerformanceHandler) CreateOrUpdateSkillMap(c *fiber.Ctx) error {
 func (h *PerformanceHandler) GetSkillMapByEmployee(c *fiber.Ctx) error {
 	employee := c.Query("employee")
 	if employee == "" {
-		return response.BadRequest(c, "employee is required")
+		return frappeResponse.SendBadRequest(c, "employee is required")
 	}
 
 	skillMap, err := h.performanceService.GetSkillMapByEmployee(c.Context(), employee)
 	if err != nil {
 		if err == performance.ErrSkillMapNotFound {
-			return response.NotFound(c, "skill map not found")
+			return frappeResponse.SendNotFound(c, "skill map not found")
 		}
-		return response.InternalServerError(c, "failed to get skill map")
+		return frappeResponse.SendInternalError(c, "failed to get skill map")
 	}
 
-	return response.Success(c, skillMap, "success")
+	return frappeResponse.SendSuccess(c, skillMap)
 }
 
 // ========== Template & Cycle Operations ==========
@@ -393,10 +394,10 @@ func (h *PerformanceHandler) GetActiveAppraisalCycles(c *fiber.Ctx) error {
 
 	cycles, err := h.performanceService.GetActiveAppraisalCycles(c.Context(), company)
 	if err != nil {
-		return response.InternalServerError(c, "failed to get active cycles")
+		return frappeResponse.SendInternalError(c, "failed to get active cycles")
 	}
 
-	return response.Success(c, cycles, "success")
+	return frappeResponse.SendSuccess(c, cycles)
 }
 
 // GetActiveAppraisalTemplates retrieves active appraisal templates
@@ -406,8 +407,8 @@ func (h *PerformanceHandler) GetActiveAppraisalTemplates(c *fiber.Ctx) error {
 
 	templates, err := h.performanceService.GetActiveAppraisalTemplates(c.Context(), company)
 	if err != nil {
-		return response.InternalServerError(c, "failed to get active templates")
+		return frappeResponse.SendInternalError(c, "failed to get active templates")
 	}
 
-	return response.Success(c, templates, "success")
+	return frappeResponse.SendSuccess(c, templates)
 }

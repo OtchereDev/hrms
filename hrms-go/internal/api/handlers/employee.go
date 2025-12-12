@@ -3,8 +3,8 @@ package handlers
 import (
 	"strconv"
 
-	frappeResponse "github.com/OtchereDev/hrms-go/internal/core/frappe"
 	"github.com/OtchereDev/hrms-go/internal/api/middleware"
+	frappeResponse "github.com/OtchereDev/hrms-go/internal/core/frappe"
 	"github.com/OtchereDev/hrms-go/internal/core/repositories"
 	"github.com/OtchereDev/hrms-go/internal/core/services/employee"
 	"github.com/OtchereDev/hrms-go/pkg/response"
@@ -29,7 +29,7 @@ func NewEmployeeHandler(db *gorm.DB) *EmployeeHandler {
 func (h *EmployeeHandler) CreateEmployee(c *fiber.Ctx) error {
 	var req employee.CreateEmployeeRequest
 	if err := c.BodyParser(&req); err != nil {
-		return response.BadRequest(c, "invalid request body")
+		return frappeResponse.SendBadRequest(c, "invalid request body")
 	}
 
 	emp, err := h.employeeService.CreateEmployee(c.Context(), req)
@@ -39,9 +39,9 @@ func (h *EmployeeHandler) CreateEmployee(c *fiber.Ctx) error {
 			return response.Conflict(c, "employee already exists")
 		case employee.ErrEmployeeNumberRequired, employee.ErrEmployeeNameRequired,
 			employee.ErrCompanyRequired, employee.ErrDateOfJoiningRequired:
-			return response.BadRequest(c, err.Error())
+			return frappeResponse.SendBadRequest(c, err.Error())
 		default:
-			return response.InternalServerError(c, "failed to create employee")
+			return frappeResponse.SendInternalError(c, "failed to create employee")
 		}
 	}
 
@@ -55,7 +55,7 @@ func (h *EmployeeHandler) GetEmployee(c *fiber.Ctx) error {
 	employeeNumber := c.Query("employee_number")
 
 	if id == "" && employeeNumber == "" {
-		return response.BadRequest(c, "id or employee_number is required")
+		return frappeResponse.SendBadRequest(c, "id or employee_number is required")
 	}
 
 	var emp interface{}
@@ -66,19 +66,19 @@ func (h *EmployeeHandler) GetEmployee(c *fiber.Ctx) error {
 	} else {
 		idInt, parseErr := strconv.ParseUint(id, 10, 32)
 		if parseErr != nil {
-			return response.BadRequest(c, "invalid id")
+			return frappeResponse.SendBadRequest(c, "invalid id")
 		}
 		emp, err = h.employeeService.GetEmployee(c.Context(), uint(idInt))
 	}
 
 	if err != nil {
 		if err == employee.ErrEmployeeNotFound {
-			return response.NotFound(c, "employee not found")
+			return frappeResponse.SendNotFound(c, "employee not found")
 		}
-		return response.InternalServerError(c, "failed to get employee")
+		return frappeResponse.SendInternalError(c, "failed to get employee")
 	}
 
-	return response.Success(c, emp, "success")
+	return frappeResponse.SendSuccess(c, emp)
 }
 
 // GetEmployeeDetails retrieves employee with all details
@@ -86,23 +86,23 @@ func (h *EmployeeHandler) GetEmployee(c *fiber.Ctx) error {
 func (h *EmployeeHandler) GetEmployeeDetails(c *fiber.Ctx) error {
 	idStr := c.Query("id")
 	if idStr == "" {
-		return response.BadRequest(c, "id is required")
+		return frappeResponse.SendBadRequest(c, "id is required")
 	}
 
 	id, err := strconv.ParseUint(idStr, 10, 32)
 	if err != nil {
-		return response.BadRequest(c, "invalid id")
+		return frappeResponse.SendBadRequest(c, "invalid id")
 	}
 
 	details, err := h.employeeService.GetEmployeeWithDetails(c.Context(), uint(id))
 	if err != nil {
 		if err == employee.ErrEmployeeNotFound {
-			return response.NotFound(c, "employee not found")
+			return frappeResponse.SendNotFound(c, "employee not found")
 		}
-		return response.InternalServerError(c, "failed to get employee details")
+		return frappeResponse.SendInternalError(c, "failed to get employee details")
 	}
 
-	return response.Success(c, details, "success")
+	return frappeResponse.SendSuccess(c, details)
 }
 
 // UpdateEmployee updates an employee
@@ -110,28 +110,28 @@ func (h *EmployeeHandler) GetEmployeeDetails(c *fiber.Ctx) error {
 func (h *EmployeeHandler) UpdateEmployee(c *fiber.Ctx) error {
 	idStr := c.Query("id")
 	if idStr == "" {
-		return response.BadRequest(c, "id is required")
+		return frappeResponse.SendBadRequest(c, "id is required")
 	}
 
 	id, err := strconv.ParseUint(idStr, 10, 32)
 	if err != nil {
-		return response.BadRequest(c, "invalid id")
+		return frappeResponse.SendBadRequest(c, "invalid id")
 	}
 
 	var req employee.UpdateEmployeeRequest
 	if err := c.BodyParser(&req); err != nil {
-		return response.BadRequest(c, "invalid request body")
+		return frappeResponse.SendBadRequest(c, "invalid request body")
 	}
 
 	emp, err := h.employeeService.UpdateEmployee(c.Context(), uint(id), req)
 	if err != nil {
 		if err == employee.ErrEmployeeNotFound {
-			return response.NotFound(c, "employee not found")
+			return frappeResponse.SendNotFound(c, "employee not found")
 		}
-		return response.InternalServerError(c, "failed to update employee")
+		return frappeResponse.SendInternalError(c, "failed to update employee")
 	}
 
-	return response.Success(c, emp, "Employee updated successfully")
+	return frappeResponse.SendSuccess(c, emp)
 }
 
 // DeleteEmployee deletes an employee
@@ -139,22 +139,22 @@ func (h *EmployeeHandler) UpdateEmployee(c *fiber.Ctx) error {
 func (h *EmployeeHandler) DeleteEmployee(c *fiber.Ctx) error {
 	idStr := c.Query("id")
 	if idStr == "" {
-		return response.BadRequest(c, "id is required")
+		return frappeResponse.SendBadRequest(c, "id is required")
 	}
 
 	id, err := strconv.ParseUint(idStr, 10, 32)
 	if err != nil {
-		return response.BadRequest(c, "invalid id")
+		return frappeResponse.SendBadRequest(c, "invalid id")
 	}
 
 	if err := h.employeeService.DeleteEmployee(c.Context(), uint(id)); err != nil {
 		if err == employee.ErrEmployeeNotFound {
-			return response.NotFound(c, "employee not found")
+			return frappeResponse.SendNotFound(c, "employee not found")
 		}
-		return response.InternalServerError(c, "failed to delete employee")
+		return frappeResponse.SendInternalError(c, "failed to delete employee")
 	}
 
-	return response.Success(c, nil, "Employee deleted successfully")
+	return frappeResponse.SendSuccess(c, nil)
 }
 
 // ListEmployees retrieves employees with pagination and filters
@@ -177,7 +177,7 @@ func (h *EmployeeHandler) ListEmployees(c *fiber.Ctx) error {
 
 	employees, total, err := h.employeeService.ListEmployees(c.Context(), filters, page, pageSize)
 	if err != nil {
-		return response.InternalServerError(c, "failed to list employees")
+		return frappeResponse.SendInternalError(c, "failed to list employees")
 	}
 
 	return response.Paginated(c, employees, page, pageSize, total)
@@ -188,10 +188,10 @@ func (h *EmployeeHandler) ListEmployees(c *fiber.Ctx) error {
 func (h *EmployeeHandler) GetActiveEmployees(c *fiber.Ctx) error {
 	employees, err := h.employeeService.GetActiveEmployees(c.Context())
 	if err != nil {
-		return response.InternalServerError(c, "failed to get active employees")
+		return frappeResponse.SendInternalError(c, "failed to get active employees")
 	}
 
-	return response.Success(c, employees, "success")
+	return frappeResponse.SendSuccess(c, employees)
 }
 
 // GetEmployeesByDepartment retrieves employees in a department
@@ -199,15 +199,15 @@ func (h *EmployeeHandler) GetActiveEmployees(c *fiber.Ctx) error {
 func (h *EmployeeHandler) GetEmployeesByDepartment(c *fiber.Ctx) error {
 	department := c.Query("department")
 	if department == "" {
-		return response.BadRequest(c, "department is required")
+		return frappeResponse.SendBadRequest(c, "department is required")
 	}
 
 	employees, err := h.employeeService.GetEmployeesByDepartment(c.Context(), department)
 	if err != nil {
-		return response.InternalServerError(c, "failed to get employees")
+		return frappeResponse.SendInternalError(c, "failed to get employees")
 	}
 
-	return response.Success(c, employees, "success")
+	return frappeResponse.SendSuccess(c, employees)
 }
 
 // GetCurrentEmployeeInfo returns current logged-in employee information
@@ -215,7 +215,7 @@ func (h *EmployeeHandler) GetEmployeesByDepartment(c *fiber.Ctx) error {
 func (h *EmployeeHandler) GetCurrentEmployeeInfo(c *fiber.Ctx) error {
 	userID := middleware.GetUserID(c)
 	if userID == 0 {
-		return response.Unauthorized(c, "not authenticated")
+		return frappeResponse.SendAuthenticationError(c, "not authenticated")
 	}
 
 	// Convert user ID to string (assuming user_id is stored as string in employee table)
@@ -224,12 +224,12 @@ func (h *EmployeeHandler) GetCurrentEmployeeInfo(c *fiber.Ctx) error {
 	emp, err := h.employeeService.GetEmployeeByUserID(c.Context(), userIDStr)
 	if err != nil {
 		if err == employee.ErrEmployeeNotFound {
-			return response.NotFound(c, "employee record not found for current user")
+			return frappeResponse.SendNotFound(c, "employee record not found for current user")
 		}
-		return response.InternalServerError(c, "failed to get employee info")
+		return frappeResponse.SendInternalError(c, "failed to get employee info")
 	}
 
-	return response.Success(c, emp, "success")
+	return frappeResponse.SendSuccess(c, emp)
 }
 
 // UpdateEmployeeStatus updates employee status
@@ -237,12 +237,12 @@ func (h *EmployeeHandler) GetCurrentEmployeeInfo(c *fiber.Ctx) error {
 func (h *EmployeeHandler) UpdateEmployeeStatus(c *fiber.Ctx) error {
 	idStr := c.Query("id")
 	if idStr == "" {
-		return response.BadRequest(c, "id is required")
+		return frappeResponse.SendBadRequest(c, "id is required")
 	}
 
 	id, err := strconv.ParseUint(idStr, 10, 32)
 	if err != nil {
-		return response.BadRequest(c, "invalid id")
+		return frappeResponse.SendBadRequest(c, "invalid id")
 	}
 
 	var req struct {
@@ -250,18 +250,18 @@ func (h *EmployeeHandler) UpdateEmployeeStatus(c *fiber.Ctx) error {
 	}
 
 	if err := c.BodyParser(&req); err != nil {
-		return response.BadRequest(c, "invalid request body")
+		return frappeResponse.SendBadRequest(c, "invalid request body")
 	}
 
 	if req.Status == "" {
-		return response.BadRequest(c, "status is required")
+		return frappeResponse.SendBadRequest(c, "status is required")
 	}
 
 	if err := h.employeeService.UpdateEmployeeStatus(c.Context(), uint(id), req.Status); err != nil {
-		return response.InternalServerError(c, "failed to update employee status")
+		return frappeResponse.SendInternalError(c, "failed to update employee status")
 	}
 
-	return response.Success(c, nil, "Employee status updated successfully")
+	return frappeResponse.SendSuccess(c, nil)
 }
 
 // GetEmployeeDetails retrieves detailed employee information

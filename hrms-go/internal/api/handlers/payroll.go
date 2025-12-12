@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	frappeResponse "github.com/OtchereDev/hrms-go/internal/core/frappe"
 	"strconv"
 	"time"
 
@@ -30,20 +31,20 @@ func NewPayrollHandler(db *gorm.DB) *PayrollHandler {
 func (h *PayrollHandler) GenerateSalarySlip(c *fiber.Ctx) error {
 	var req payroll.GenerateSalarySlipRequest
 	if err := c.BodyParser(&req); err != nil {
-		return response.BadRequest(c, "invalid request body")
+		return frappeResponse.SendBadRequest(c, "invalid request body")
 	}
 
 	slip, err := h.payrollService.GenerateSalarySlip(c.Context(), &req)
 	if err != nil {
 		switch err {
 		case payroll.ErrEmployeeRequired:
-			return response.BadRequest(c, "employee is required")
+			return frappeResponse.SendBadRequest(c, "employee is required")
 		case payroll.ErrNoActiveAssignment:
-			return response.BadRequest(c, "no active salary assignment for employee")
+			return frappeResponse.SendBadRequest(c, "no active salary assignment for employee")
 		case payroll.ErrSalaryStructureNotFound:
-			return response.NotFound(c, "salary structure not found")
+			return frappeResponse.SendNotFound(c, "salary structure not found")
 		default:
-			return response.InternalServerError(c, "failed to generate salary slip")
+			return frappeResponse.SendInternalError(c, "failed to generate salary slip")
 		}
 	}
 
@@ -55,23 +56,23 @@ func (h *PayrollHandler) GenerateSalarySlip(c *fiber.Ctx) error {
 func (h *PayrollHandler) GetSalarySlip(c *fiber.Ctx) error {
 	idStr := c.Query("id")
 	if idStr == "" {
-		return response.BadRequest(c, "id is required")
+		return frappeResponse.SendBadRequest(c, "id is required")
 	}
 
 	id, err := strconv.ParseUint(idStr, 10, 32)
 	if err != nil {
-		return response.BadRequest(c, "invalid id")
+		return frappeResponse.SendBadRequest(c, "invalid id")
 	}
 
 	slip, err := h.payrollService.GetSalarySlipByID(c.Context(), uint(id))
 	if err != nil {
 		if err == payroll.ErrSalarySlipNotFound {
-			return response.NotFound(c, "salary slip not found")
+			return frappeResponse.SendNotFound(c, "salary slip not found")
 		}
-		return response.InternalServerError(c, "failed to get salary slip")
+		return frappeResponse.SendInternalError(c, "failed to get salary slip")
 	}
 
-	return response.Success(c, slip, "success")
+	return frappeResponse.SendSuccess(c, slip)
 }
 
 // SubmitSalarySlip submits a salary slip
@@ -79,23 +80,23 @@ func (h *PayrollHandler) GetSalarySlip(c *fiber.Ctx) error {
 func (h *PayrollHandler) SubmitSalarySlip(c *fiber.Ctx) error {
 	idStr := c.Query("id")
 	if idStr == "" {
-		return response.BadRequest(c, "id is required")
+		return frappeResponse.SendBadRequest(c, "id is required")
 	}
 
 	id, err := strconv.ParseUint(idStr, 10, 32)
 	if err != nil {
-		return response.BadRequest(c, "invalid id")
+		return frappeResponse.SendBadRequest(c, "invalid id")
 	}
 
 	slip, err := h.payrollService.SubmitSalarySlip(c.Context(), uint(id))
 	if err != nil {
 		if err == payroll.ErrSalarySlipNotFound {
-			return response.NotFound(c, "salary slip not found")
+			return frappeResponse.SendNotFound(c, "salary slip not found")
 		}
-		return response.InternalServerError(c, "failed to submit salary slip")
+		return frappeResponse.SendInternalError(c, "failed to submit salary slip")
 	}
 
-	return response.Success(c, slip, "Salary slip submitted successfully")
+	return frappeResponse.SendSuccess(c, slip)
 }
 
 // ListSalarySlips retrieves salary slips with filters
@@ -125,7 +126,7 @@ func (h *PayrollHandler) ListSalarySlips(c *fiber.Ctx) error {
 
 	slips, total, err := h.payrollService.ListSalarySlips(c.Context(), filters, page, pageSize)
 	if err != nil {
-		return response.InternalServerError(c, "failed to list salary slips")
+		return frappeResponse.SendInternalError(c, "failed to list salary slips")
 	}
 
 	return response.Paginated(c, slips, page, pageSize, total)
@@ -138,18 +139,18 @@ func (h *PayrollHandler) ListSalarySlips(c *fiber.Ctx) error {
 func (h *PayrollHandler) AssignSalaryStructure(c *fiber.Ctx) error {
 	var req payroll.AssignSalaryStructureRequest
 	if err := c.BodyParser(&req); err != nil {
-		return response.BadRequest(c, "invalid request body")
+		return frappeResponse.SendBadRequest(c, "invalid request body")
 	}
 
 	assignment, err := h.payrollService.AssignSalaryStructure(c.Context(), &req)
 	if err != nil {
 		switch err {
 		case payroll.ErrEmployeeRequired:
-			return response.BadRequest(c, "employee is required")
+			return frappeResponse.SendBadRequest(c, "employee is required")
 		case payroll.ErrSalaryStructureNotFound:
-			return response.NotFound(c, "salary structure not found")
+			return frappeResponse.SendNotFound(c, "salary structure not found")
 		default:
-			return response.InternalServerError(c, "failed to assign salary structure")
+			return frappeResponse.SendInternalError(c, "failed to assign salary structure")
 		}
 	}
 
@@ -161,18 +162,18 @@ func (h *PayrollHandler) AssignSalaryStructure(c *fiber.Ctx) error {
 func (h *PayrollHandler) GetActiveSalaryAssignment(c *fiber.Ctx) error {
 	employee := c.Query("employee")
 	if employee == "" {
-		return response.BadRequest(c, "employee is required")
+		return frappeResponse.SendBadRequest(c, "employee is required")
 	}
 
 	assignment, err := h.payrollService.GetActiveSalaryAssignment(c.Context(), employee)
 	if err != nil {
 		if err == payroll.ErrNoActiveAssignment {
-			return response.NotFound(c, "no active salary assignment found")
+			return frappeResponse.SendNotFound(c, "no active salary assignment found")
 		}
-		return response.InternalServerError(c, "failed to get active assignment")
+		return frappeResponse.SendInternalError(c, "failed to get active assignment")
 	}
 
-	return response.Success(c, assignment, "success")
+	return frappeResponse.SendSuccess(c, assignment)
 }
 
 // ========== Loan Operations ==========
@@ -182,15 +183,15 @@ func (h *PayrollHandler) GetActiveSalaryAssignment(c *fiber.Ctx) error {
 func (h *PayrollHandler) CreateLoan(c *fiber.Ctx) error {
 	var req payroll.CreateLoanRequest
 	if err := c.BodyParser(&req); err != nil {
-		return response.BadRequest(c, "invalid request body")
+		return frappeResponse.SendBadRequest(c, "invalid request body")
 	}
 
 	loan, err := h.payrollService.CreateLoan(c.Context(), &req)
 	if err != nil {
 		if err == payroll.ErrEmployeeRequired {
-			return response.BadRequest(c, "applicant is required")
+			return frappeResponse.SendBadRequest(c, "applicant is required")
 		}
-		return response.InternalServerError(c, "failed to create loan")
+		return frappeResponse.SendInternalError(c, "failed to create loan")
 	}
 
 	return response.Created(c, loan, "Loan created successfully")
@@ -201,23 +202,23 @@ func (h *PayrollHandler) CreateLoan(c *fiber.Ctx) error {
 func (h *PayrollHandler) ApproveLoan(c *fiber.Ctx) error {
 	idStr := c.Query("id")
 	if idStr == "" {
-		return response.BadRequest(c, "id is required")
+		return frappeResponse.SendBadRequest(c, "id is required")
 	}
 
 	id, err := strconv.ParseUint(idStr, 10, 32)
 	if err != nil {
-		return response.BadRequest(c, "invalid id")
+		return frappeResponse.SendBadRequest(c, "invalid id")
 	}
 
 	loan, err := h.payrollService.ApproveLoan(c.Context(), uint(id))
 	if err != nil {
 		if err == payroll.ErrLoanNotFound {
-			return response.NotFound(c, "loan not found")
+			return frappeResponse.SendNotFound(c, "loan not found")
 		}
-		return response.InternalServerError(c, "failed to approve loan")
+		return frappeResponse.SendInternalError(c, "failed to approve loan")
 	}
 
-	return response.Success(c, loan, "Loan approved successfully")
+	return frappeResponse.SendSuccess(c, loan)
 }
 
 // ListLoans retrieves loans with filters
@@ -235,7 +236,7 @@ func (h *PayrollHandler) ListLoans(c *fiber.Ctx) error {
 
 	loans, total, err := h.payrollService.ListLoans(c.Context(), filters, page, pageSize)
 	if err != nil {
-		return response.InternalServerError(c, "failed to list loans")
+		return frappeResponse.SendInternalError(c, "failed to list loans")
 	}
 
 	return response.Paginated(c, loans, page, pageSize, total)
@@ -248,15 +249,15 @@ func (h *PayrollHandler) ListLoans(c *fiber.Ctx) error {
 func (h *PayrollHandler) CreateEmployeeAdvance(c *fiber.Ctx) error {
 	var req payroll.CreateAdvanceRequest
 	if err := c.BodyParser(&req); err != nil {
-		return response.BadRequest(c, "invalid request body")
+		return frappeResponse.SendBadRequest(c, "invalid request body")
 	}
 
 	advance, err := h.payrollService.CreateEmployeeAdvance(c.Context(), &req)
 	if err != nil {
 		if err == payroll.ErrEmployeeRequired {
-			return response.BadRequest(c, "employee is required")
+			return frappeResponse.SendBadRequest(c, "employee is required")
 		}
-		return response.InternalServerError(c, "failed to create advance")
+		return frappeResponse.SendInternalError(c, "failed to create advance")
 	}
 
 	return response.Created(c, advance, "Employee advance created successfully")
@@ -267,23 +268,23 @@ func (h *PayrollHandler) CreateEmployeeAdvance(c *fiber.Ctx) error {
 func (h *PayrollHandler) ApproveAdvance(c *fiber.Ctx) error {
 	idStr := c.Query("id")
 	if idStr == "" {
-		return response.BadRequest(c, "id is required")
+		return frappeResponse.SendBadRequest(c, "id is required")
 	}
 
 	id, err := strconv.ParseUint(idStr, 10, 32)
 	if err != nil {
-		return response.BadRequest(c, "invalid id")
+		return frappeResponse.SendBadRequest(c, "invalid id")
 	}
 
 	advance, err := h.payrollService.ApproveAdvance(c.Context(), uint(id))
 	if err != nil {
 		if err == payroll.ErrEmployeeAdvanceNotFound {
-			return response.NotFound(c, "employee advance not found")
+			return frappeResponse.SendNotFound(c, "employee advance not found")
 		}
-		return response.InternalServerError(c, "failed to approve advance")
+		return frappeResponse.SendInternalError(c, "failed to approve advance")
 	}
 
-	return response.Success(c, advance, "Employee advance approved successfully")
+	return frappeResponse.SendSuccess(c, advance)
 }
 
 // ========== Expense Claim Operations ==========
@@ -293,15 +294,15 @@ func (h *PayrollHandler) ApproveAdvance(c *fiber.Ctx) error {
 func (h *PayrollHandler) CreateExpenseClaim(c *fiber.Ctx) error {
 	var req payroll.CreateExpenseClaimRequest
 	if err := c.BodyParser(&req); err != nil {
-		return response.BadRequest(c, "invalid request body")
+		return frappeResponse.SendBadRequest(c, "invalid request body")
 	}
 
 	claim, err := h.payrollService.CreateExpenseClaim(c.Context(), &req)
 	if err != nil {
 		if err == payroll.ErrEmployeeRequired {
-			return response.BadRequest(c, "employee is required")
+			return frappeResponse.SendBadRequest(c, "employee is required")
 		}
-		return response.InternalServerError(c, "failed to create expense claim")
+		return frappeResponse.SendInternalError(c, "failed to create expense claim")
 	}
 
 	return response.Created(c, claim, "Expense claim created successfully")
@@ -312,23 +313,23 @@ func (h *PayrollHandler) CreateExpenseClaim(c *fiber.Ctx) error {
 func (h *PayrollHandler) ApproveExpenseClaim(c *fiber.Ctx) error {
 	idStr := c.Query("id")
 	if idStr == "" {
-		return response.BadRequest(c, "id is required")
+		return frappeResponse.SendBadRequest(c, "id is required")
 	}
 
 	id, err := strconv.ParseUint(idStr, 10, 32)
 	if err != nil {
-		return response.BadRequest(c, "invalid id")
+		return frappeResponse.SendBadRequest(c, "invalid id")
 	}
 
 	claim, err := h.payrollService.ApproveExpenseClaim(c.Context(), uint(id))
 	if err != nil {
 		if err == payroll.ErrExpenseClaimNotFound {
-			return response.NotFound(c, "expense claim not found")
+			return frappeResponse.SendNotFound(c, "expense claim not found")
 		}
-		return response.InternalServerError(c, "failed to approve expense claim")
+		return frappeResponse.SendInternalError(c, "failed to approve expense claim")
 	}
 
-	return response.Success(c, claim, "Expense claim approved successfully")
+	return frappeResponse.SendSuccess(c, claim)
 }
 
 // ListExpenseClaims retrieves expense claims with filters
@@ -346,7 +347,7 @@ func (h *PayrollHandler) ListExpenseClaims(c *fiber.Ctx) error {
 
 	claims, total, err := h.payrollService.ListExpenseClaims(c.Context(), filters, page, pageSize)
 	if err != nil {
-		return response.InternalServerError(c, "failed to list expense claims")
+		return frappeResponse.SendInternalError(c, "failed to list expense claims")
 	}
 
 	return response.Paginated(c, claims, page, pageSize, total)
@@ -360,25 +361,25 @@ func (h *PayrollHandler) GetSalarySlipDetails(c *fiber.Ctx) error {
 	endDateStr := c.Query("end_date")
 
 	if employee == "" || startDateStr == "" || endDateStr == "" {
-		return response.BadRequest(c, "employee, start_date, and end_date are required")
+		return frappeResponse.SendBadRequest(c, "employee, start_date, and end_date are required")
 	}
 
 	startDate, err := time.Parse("2006-01-02", startDateStr)
 	if err != nil {
-		return response.BadRequest(c, "invalid start_date format, expected YYYY-MM-DD")
+		return frappeResponse.SendBadRequest(c, "invalid start_date format, expected YYYY-MM-DD")
 	}
 
 	endDate, err := time.Parse("2006-01-02", endDateStr)
 	if err != nil {
-		return response.BadRequest(c, "invalid end_date format, expected YYYY-MM-DD")
+		return frappeResponse.SendBadRequest(c, "invalid end_date format, expected YYYY-MM-DD")
 	}
 
 	details, err := h.payrollService.GetSalarySlipDetails(c.Context(), employee, startDate, endDate)
 	if err != nil {
-		return response.InternalServerError(c, "failed to get salary slip details")
+		return frappeResponse.SendInternalError(c, "failed to get salary slip details")
 	}
 
-	return response.Success(c, details, "Salary slip details retrieved successfully")
+	return frappeResponse.SendSuccess(c, details)
 }
 
 // CalculateLoanAmounts calculates loan repayment amounts
@@ -390,33 +391,33 @@ func (h *PayrollHandler) CalculateLoanAmounts(c *fiber.Ctx) error {
 	repaymentPeriodsStr := c.Query("repayment_periods")
 
 	if loanAmountStr == "" || repaymentPeriodsStr == "" {
-		return response.BadRequest(c, "loan_amount and repayment_periods are required")
+		return frappeResponse.SendBadRequest(c, "loan_amount and repayment_periods are required")
 	}
 
 	loanAmount, err := strconv.ParseFloat(loanAmountStr, 64)
 	if err != nil {
-		return response.BadRequest(c, "invalid loan_amount")
+		return frappeResponse.SendBadRequest(c, "invalid loan_amount")
 	}
 
 	rateOfInterest := 0.0
 	if rateOfInterestStr != "" {
 		rateOfInterest, err = strconv.ParseFloat(rateOfInterestStr, 64)
 		if err != nil {
-			return response.BadRequest(c, "invalid rate_of_interest")
+			return frappeResponse.SendBadRequest(c, "invalid rate_of_interest")
 		}
 	}
 
 	repaymentPeriods, err := strconv.Atoi(repaymentPeriodsStr)
 	if err != nil {
-		return response.BadRequest(c, "invalid repayment_periods")
+		return frappeResponse.SendBadRequest(c, "invalid repayment_periods")
 	}
 
 	amounts, err := h.payrollService.CalculateLoanAmounts(c.Context(), loanType, loanAmount, rateOfInterest, repaymentPeriods)
 	if err != nil {
-		return response.BadRequest(c, err.Error())
+		return frappeResponse.SendBadRequest(c, err.Error())
 	}
 
-	return response.Success(c, amounts, "Loan amounts calculated successfully")
+	return frappeResponse.SendSuccess(c, amounts)
 }
 
 // CalculateNetPay calculates net pay from a salary slip
@@ -425,20 +426,20 @@ func (h *PayrollHandler) CalculateNetPay(c *fiber.Ctx) error {
 	slipIDStr := c.Query("slip_id")
 
 	if slipIDStr == "" {
-		return response.BadRequest(c, "slip_id is required")
+		return frappeResponse.SendBadRequest(c, "slip_id is required")
 	}
 
 	slipID, err := strconv.ParseUint(slipIDStr, 10, 32)
 	if err != nil {
-		return response.BadRequest(c, "invalid slip_id")
+		return frappeResponse.SendBadRequest(c, "invalid slip_id")
 	}
 
 	netPay, err := h.payrollService.CalculateNetPay(c.Context(), uint(slipID))
 	if err != nil {
-		return response.InternalServerError(c, "failed to calculate net pay")
+		return frappeResponse.SendInternalError(c, "failed to calculate net pay")
 	}
 
-	return response.Success(c, map[string]interface{}{"net_pay": netPay}, "Net pay calculated successfully")
+	return frappeResponse.SendSuccess(c, map[string]interface{}{"net_pay": netPay})
 }
 
 // GetPayrollSummary returns payroll summary for a period
@@ -449,23 +450,23 @@ func (h *PayrollHandler) GetPayrollSummary(c *fiber.Ctx) error {
 	company := c.Query("company")
 
 	if startDateStr == "" || endDateStr == "" {
-		return response.BadRequest(c, "start_date and end_date are required")
+		return frappeResponse.SendBadRequest(c, "start_date and end_date are required")
 	}
 
 	startDate, err := time.Parse("2006-01-02", startDateStr)
 	if err != nil {
-		return response.BadRequest(c, "invalid start_date format, expected YYYY-MM-DD")
+		return frappeResponse.SendBadRequest(c, "invalid start_date format, expected YYYY-MM-DD")
 	}
 
 	endDate, err := time.Parse("2006-01-02", endDateStr)
 	if err != nil {
-		return response.BadRequest(c, "invalid end_date format, expected YYYY-MM-DD")
+		return frappeResponse.SendBadRequest(c, "invalid end_date format, expected YYYY-MM-DD")
 	}
 
 	summary, err := h.payrollService.GetPayrollSummary(c.Context(), startDate, endDate, company)
 	if err != nil {
-		return response.InternalServerError(c, "failed to get payroll summary")
+		return frappeResponse.SendInternalError(c, "failed to get payroll summary")
 	}
 
-	return response.Success(c, summary, "Payroll summary retrieved successfully")
+	return frappeResponse.SendSuccess(c, summary)
 }
