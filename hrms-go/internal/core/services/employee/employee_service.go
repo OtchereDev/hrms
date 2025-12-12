@@ -371,3 +371,166 @@ func (s *EmployeeService) GetEmployeesByDepartment(ctx context.Context, departme
 func (s *EmployeeService) GetEmployeesByManager(ctx context.Context, managerEmployeeNumber string) ([]hr.Employee, error) {
 	return s.repo.GetEmployeesByManager(ctx, managerEmployeeNumber)
 }
+
+// GetEmployeeDetails retrieves detailed employee information including related data
+func (s *EmployeeService) GetEmployeeDetails(ctx context.Context, employeeNumber string) (map[string]interface{}, error) {
+	employee, err := s.repo.GetByEmployeeNumber(ctx, employeeNumber)
+	if err != nil {
+		return nil, err
+	}
+
+	// Build detailed response with all employee information
+	details := map[string]interface{}{
+		"employee_number":    employee.EmployeeNumber,
+		"first_name":         employee.FirstName,
+		"middle_name":        employee.MiddleName,
+		"last_name":          employee.LastName,
+		"full_name":          employee.FirstName + " " + employee.LastName,
+		"gender":             employee.Gender,
+		"date_of_birth":      employee.DateOfBirth,
+		"date_of_joining":    employee.DateOfJoining,
+		"company":            employee.Company,
+		"department":         employee.Department,
+		"designation":        employee.Designation,
+		"branch":             employee.Branch,
+		"employment_type":    employee.EmploymentType,
+		"status":             employee.Status,
+		"reports_to":         employee.ReportsTo,
+		"grade":              employee.Grade,
+		"personal_email":     employee.PersonalEmail,
+		"company_email":      employee.CompanyEmail,
+		"cell_number":        employee.CellNumber,
+		"emergency_contact":  employee.EmergencyContactName,
+		"emergency_phone":    employee.EmergencyContactPhone,
+		"current_address":    employee.CurrentAddress,
+		"permanent_address":  employee.PermanentAddress,
+		"user_id":            employee.UserID,
+	}
+
+	return details, nil
+}
+
+// SearchEmployees searches for employees based on various criteria
+func (s *EmployeeService) SearchEmployees(ctx context.Context, query string, department, designation, status string, limit int) ([]hr.Employee, error) {
+	if limit <= 0 {
+		limit = 20
+	}
+
+	// Use repository's list method with filters
+	var employees []hr.Employee
+	db := s.repo.GetDB().WithContext(ctx)
+
+	// Apply search query
+	if query != "" {
+		db = db.Where("LOWER(first_name) LIKE ? OR LOWER(last_name) LIKE ? OR LOWER(employee_number) LIKE ?",
+			"%"+query+"%", "%"+query+"%", "%"+query+"%")
+	}
+
+	// Apply filters
+	if department != "" {
+		db = db.Where("department = ?", department)
+	}
+	if designation != "" {
+		db = db.Where("designation = ?", designation)
+	}
+	if status != "" {
+		db = db.Where("status = ?", status)
+	} else {
+		db = db.Where("status = ?", "Active") // Default to active employees
+	}
+
+	err := db.Limit(limit).Find(&employees).Error
+	return employees, err
+}
+
+// GetReportingStructure retrieves the complete reporting hierarchy for an employee
+func (s *EmployeeService) GetReportingStructure(ctx context.Context, employeeNumber string) (map[string]interface{}, error) {
+	employee, err := s.repo.GetByEmployeeNumber(ctx, employeeNumber)
+	if err != nil {
+		return nil, err
+	}
+
+	// Get reporting chain (upward)
+	reportingChain := []map[string]interface{}{}
+	currentEmployee := employee
+	maxDepth := 10 // Prevent infinite loops
+	depth := 0
+
+	for currentEmployee.ReportsTo != "" && depth < maxDepth {
+		manager, err := s.repo.GetByEmployeeNumber(ctx, currentEmployee.ReportsTo)
+		if err != nil {
+			break
+		}
+
+		reportingChain = append(reportingChain, map[string]interface{}{
+			"employee_number": manager.EmployeeNumber,
+			"name":            manager.FirstName + " " + manager.LastName,
+			"designation":     manager.Designation,
+			"level":           depth + 1,
+		})
+
+		currentEmployee = manager
+		depth++
+	}
+
+	// Get direct reports (downward)
+	directReports, _ := s.repo.GetEmployeesByManager(ctx, employeeNumber)
+	reportsList := []map[string]interface{}{}
+	for _, rep := range directReports {
+		reportsList = append(reportsList, map[string]interface{}{
+			"employee_number": rep.EmployeeNumber,
+			"name":            rep.FirstName + " " + rep.LastName,
+			"designation":     rep.Designation,
+		})
+	}
+
+	structure := map[string]interface{}{
+		"employee": map[string]interface{}{
+			"employee_number": employee.EmployeeNumber,
+			"name":            employee.FirstName + " " + employee.LastName,
+			"designation":     employee.Designation,
+		},
+		"reporting_to":   reportingChain,
+		"direct_reports": reportsList,
+	}
+
+	return structure, nil
+}
+
+// GetEmployeeFieldValue retrieves a specific field value for an employee
+func (s *EmployeeService) GetEmployeeFieldValue(ctx context.Context, employeeNumber, fieldName string) (interface{}, error) {
+	employee, err := s.repo.GetByEmployeeNumber(ctx, employeeNumber)
+	if err != nil {
+		return nil, err
+	}
+
+	// Map field names to employee struct fields
+	fieldMap := map[string]interface{}{
+		"employee_number":    employee.EmployeeNumber,
+		"first_name":         employee.FirstName,
+		"middle_name":        employee.MiddleName,
+		"last_name":          employee.LastName,
+		"gender":             employee.Gender,
+		"date_of_birth":      employee.DateOfBirth,
+		"date_of_joining":    employee.DateOfJoining,
+		"company":            employee.Company,
+		"department":         employee.Department,
+		"designation":        employee.Designation,
+		"branch":             employee.Branch,
+		"employment_type":    employee.EmploymentType,
+		"status":             employee.Status,
+		"reports_to":         employee.ReportsTo,
+		"grade":              employee.Grade,
+		"personal_email":     employee.PersonalEmail,
+		"company_email":      employee.CompanyEmail,
+		"cell_number":        employee.CellNumber,
+		"user_id":            employee.UserID,
+	}
+
+	value, exists := fieldMap[fieldName]
+	if !exists {
+		return nil, fmt.Errorf("field %s not found", fieldName)
+	}
+
+	return value, nil
+}

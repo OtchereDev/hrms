@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"strconv"
 	"time"
 
 	"github.com/OtchereDev/hrms-go/internal/core/models/payroll"
@@ -614,4 +615,277 @@ func (s *PayrollService) GetPayrollSummary(ctx context.Context, startDate, endDa
 	}
 
 	return summary, nil
+}
+
+// CalculateIncomeTax calculates income tax based on annual salary and tax slabs
+func (s *PayrollService) CalculateIncomeTax(ctx context.Context, annualGrossSalary float64, taxSlabs []map[string]interface{}) (float64, []map[string]interface{}, error) {
+	if annualGrossSalary <= 0 {
+		return 0, nil, nil
+	}
+
+	var totalTax float64
+	taxBreakdown := []map[string]interface{}{}
+	remainingSalary := annualGrossSalary
+
+	// Default tax slabs if none provided (Ghana tax rates as example)
+	if len(taxSlabs) == 0 {
+		taxSlabs = []map[string]interface{}{
+			{"from": 0.0, "to": 4380.0, "rate": 0.0},         // First bracket - tax free
+			{"from": 4380.0, "to": 7200.0, "rate": 5.0},      // 5%
+			{"from": 7200.0, "to": 36000.0, "rate": 10.0},    // 10%
+			{"from": 36000.0, "to": 100000.0, "rate": 17.5},  // 17.5%
+			{"from": 100000.0, "to": 999999999.0, "rate": 25.0}, // 25%
+		}
+	}
+
+	for _, slab := range taxSlabs {
+		from := slab["from"].(float64)
+		to := slab["to"].(float64)
+		rate := slab["rate"].(float64)
+
+		if annualGrossSalary > from {
+			taxableInThisSlab := math.Min(annualGrossSalary, to) - from
+			if taxableInThisSlab > 0 {
+				taxAmount := taxableInThisSlab * (rate / 100)
+				totalTax += taxAmount
+
+				taxBreakdown = append(taxBreakdown, map[string]interface{}{
+					"from_amount":    from,
+					"to_amount":      math.Min(annualGrossSalary, to),
+					"taxable_amount": taxableInThisSlab,
+					"rate":           rate,
+					"tax_amount":     taxAmount,
+				})
+
+				remainingSalary -= taxableInThisSlab
+			}
+		}
+
+		if annualGrossSalary <= to {
+			break
+		}
+	}
+
+	return totalTax, taxBreakdown, nil
+}
+
+// CalculateSocialSecurityContribution calculates SSNIT contribution (Ghana example)
+func (s *PayrollService) CalculateSocialSecurityContribution(ctx context.Context, monthlySalary float64, employeeRate, employerRate float64) (float64, float64, error) {
+	if monthlySalary <= 0 {
+		return 0, 0, nil
+	}
+
+	// Default rates for Ghana SSNIT
+	if employeeRate == 0 {
+		employeeRate = 5.5 // 5.5% employee contribution
+	}
+	if employerRate == 0 {
+		employerRate = 13.0 // 13% employer contribution
+	}
+
+	employeeContribution := monthlySalary * (employeeRate / 100)
+	employerContribution := monthlySalary * (employerRate / 100)
+
+	return employeeContribution, employerContribution, nil
+}
+
+// GetPayrollPeriod determines the current payroll period based on frequency
+func (s *PayrollService) GetPayrollPeriod(ctx context.Context, date time.Time, frequency string) (time.Time, time.Time, error) {
+	var startDate, endDate time.Time
+
+	switch frequency {
+	case "Monthly":
+		// Start of month to end of month
+		startDate = time.Date(date.Year(), date.Month(), 1, 0, 0, 0, 0, date.Location())
+		endDate = startDate.AddDate(0, 1, -1)
+
+	case "Bi-Monthly":
+		// 1-15 or 16-end of month
+		if date.Day() <= 15 {
+			startDate = time.Date(date.Year(), date.Month(), 1, 0, 0, 0, 0, date.Location())
+			endDate = time.Date(date.Year(), date.Month(), 15, 0, 0, 0, 0, date.Location())
+		} else {
+			startDate = time.Date(date.Year(), date.Month(), 16, 0, 0, 0, 0, date.Location())
+			endDate = startDate.AddDate(0, 1, -1).AddDate(0, 0, -15)
+		}
+
+	case "Weekly":
+		// Monday to Sunday
+		weekday := int(date.Weekday())
+		if weekday == 0 {
+			weekday = 7 // Sunday
+		}
+		startDate = date.AddDate(0, 0, -(weekday - 1))
+		endDate = startDate.AddDate(0, 0, 6)
+
+	case "Fortnightly":
+		// Two week period
+		weekday := int(date.Weekday())
+		if weekday == 0 {
+			weekday = 7
+		}
+		startDate = date.AddDate(0, 0, -(weekday - 1))
+		endDate = startDate.AddDate(0, 0, 13)
+
+	default:
+		return time.Time{}, time.Time{}, fmt.Errorf("unsupported payroll frequency: %s", frequency)
+	}
+
+	return startDate, endDate, nil
+}
+
+// CalculateEarningAmount calculates earning component amount based on formula
+func (s *PayrollService) CalculateEarningAmount(ctx context.Context, componentType string, baseSalary float64, formula string) (float64, error) {
+	if baseSalary <= 0 {
+		return 0, nil
+	}
+
+	// Simple formula parser
+	// Supports: "base * percentage", "fixed_amount", "base + fixed_amount"
+	switch componentType {
+	case "Basic Salary":
+		return baseSalary, nil
+
+	case "Housing Allowance":
+		// Typically 20-30% of basic
+		if formula == "" {
+			return baseSalary * 0.20, nil
+		}
+		return s.evaluateFormula(baseSalary, formula), nil
+
+	case "Transport Allowance":
+		// Typically 10-15% of basic
+		if formula == "" {
+			return baseSalary * 0.10, nil
+		}
+		return s.evaluateFormula(baseSalary, formula), nil
+
+	case "Medical Allowance":
+		// Typically 5-10% of basic
+		if formula == "" {
+			return baseSalary * 0.05, nil
+		}
+		return s.evaluateFormula(baseSalary, formula), nil
+
+	case "Bonus":
+		return s.evaluateFormula(baseSalary, formula), nil
+
+	case "Overtime":
+		return s.evaluateFormula(baseSalary, formula), nil
+
+	default:
+		if formula != "" {
+			return s.evaluateFormula(baseSalary, formula), nil
+		}
+		return 0, nil
+	}
+}
+
+// CalculateDeductionAmount calculates deduction component amount
+func (s *PayrollService) CalculateDeductionAmount(ctx context.Context, componentType string, grossSalary float64, formula string) (float64, error) {
+	if grossSalary <= 0 {
+		return 0, nil
+	}
+
+	switch componentType {
+	case "Income Tax":
+		tax, _, err := s.CalculateIncomeTax(ctx, grossSalary*12, nil)
+		if err != nil {
+			return 0, err
+		}
+		return tax / 12, nil // Monthly tax
+
+	case "Social Security":
+		employeeContribution, _, err := s.CalculateSocialSecurityContribution(ctx, grossSalary, 5.5, 13.0)
+		if err != nil {
+			return 0, err
+		}
+		return employeeContribution, nil
+
+	case "Pension":
+		// Typically 5% of basic salary
+		if formula == "" {
+			return grossSalary * 0.05, nil
+		}
+		return s.evaluateFormula(grossSalary, formula), nil
+
+	default:
+		if formula != "" {
+			return s.evaluateFormula(grossSalary, formula), nil
+		}
+		return 0, nil
+	}
+}
+
+// evaluateFormula evaluates a simple salary formula
+func (s *PayrollService) evaluateFormula(baseSalary float64, formula string) float64 {
+	// This is a simple implementation. In production, you'd want a proper formula parser
+	// Supported formats:
+	// - "0.20" or "20%" - percentage of base
+	// - "500" - fixed amount
+	// - "base * 0.20" - explicit percentage
+	// - "base + 500" - base plus fixed amount
+
+	if formula == "" {
+		return 0
+	}
+
+	// Try to parse as percentage
+	if len(formula) > 0 && formula[len(formula)-1] == '%' {
+		percentStr := formula[:len(formula)-1]
+		if percent, err := strconv.ParseFloat(percentStr, 64); err == nil {
+			return baseSalary * (percent / 100)
+		}
+	}
+
+	// Try to parse as decimal percentage
+	if value, err := strconv.ParseFloat(formula, 64); err == nil {
+		if value < 1.0 {
+			return baseSalary * value
+		}
+		return value // Fixed amount
+	}
+
+	// For complex formulas, return 0 (would need proper parser)
+	return 0
+}
+
+// GetPayrollComponents retrieves all earning and deduction components for an employee
+func (s *PayrollService) GetPayrollComponents(ctx context.Context, employee string, salaryStructure string) (map[string]interface{}, error) {
+	// This would typically fetch from salary structure assignment
+	// For now, return a basic structure
+
+	components := map[string]interface{}{
+		"earnings": []map[string]interface{}{
+			{
+				"component_type": "Basic Salary",
+				"amount":         0,
+				"formula":        "base",
+			},
+			{
+				"component_type": "Housing Allowance",
+				"amount":         0,
+				"formula":        "base * 0.20",
+			},
+			{
+				"component_type": "Transport Allowance",
+				"amount":         0,
+				"formula":        "base * 0.10",
+			},
+		},
+		"deductions": []map[string]interface{}{
+			{
+				"component_type": "Income Tax",
+				"amount":         0,
+				"formula":        "tax_slab",
+			},
+			{
+				"component_type": "Social Security",
+				"amount":         0,
+				"formula":        "gross * 0.055",
+			},
+		},
+	}
+
+	return components, nil
 }

@@ -16,6 +16,9 @@ type MethodHandler struct {
 	leaveHandler       *handlers.LeaveHandler
 	payrollHandler     *handlers.PayrollHandler
 	performanceHandler *handlers.PerformanceHandler
+	holidayHandler     *handlers.HolidayHandler
+	employeeHandler    *handlers.EmployeeHandler
+	shiftHandler       *handlers.ShiftHandler
 }
 
 // NewMethodHandler creates a new method handler
@@ -25,6 +28,9 @@ func NewMethodHandler(
 	leaveHandler *handlers.LeaveHandler,
 	payrollHandler *handlers.PayrollHandler,
 	performanceHandler *handlers.PerformanceHandler,
+	holidayHandler *handlers.HolidayHandler,
+	employeeHandler *handlers.EmployeeHandler,
+	shiftHandler *handlers.ShiftHandler,
 ) *MethodHandler {
 	return &MethodHandler{
 		db:                 db,
@@ -32,6 +38,9 @@ func NewMethodHandler(
 		leaveHandler:       leaveHandler,
 		payrollHandler:     payrollHandler,
 		performanceHandler: performanceHandler,
+		holidayHandler:     holidayHandler,
+		employeeHandler:    employeeHandler,
+		shiftHandler:       shiftHandler,
 	}
 }
 
@@ -205,6 +214,56 @@ func (h *MethodHandler) Call(c *fiber.Ctx) error {
 	// Appraisal Template methods
 	case "hrms.hr.doctype.appraisal_template.appraisal_template.get_active":
 		return h.wrapHandler(h.performanceHandler.GetActiveAppraisalTemplates)(c)
+
+	// Holiday List utility methods
+	case "hrms.hr.doctype.holiday_list.holiday_list.get":
+		return h.wrapHandler(h.holidayHandler.GetHolidayList)(c)
+	case "hrms.hr.doctype.holiday_list.holiday_list.list":
+		return h.wrapHandler(h.holidayHandler.ListHolidayLists)(c)
+	case "hrms.hr.doctype.holiday_list.holiday_list.get_holidays":
+		return h.wrapHandler(h.holidayHandler.GetHolidays)(c)
+	case "hrms.hr.doctype.holiday_list.holiday_list.is_holiday":
+		return h.wrapHandler(h.holidayHandler.IsHoliday)(c)
+	case "hrms.hr.doctype.holiday_list.holiday_list.get_working_days":
+		return h.wrapHandler(h.holidayHandler.GetWorkingDays)(c)
+	case "hrms.hr.doctype.holiday_list.holiday_list.get_holidays_between_dates":
+		return h.wrapHandler(h.holidayHandler.GetHolidaysBetweenDates)(c)
+
+	// Employee utility methods
+	case "hrms.hr.doctype.employee.employee.get_employee_details":
+		return h.wrapHandler(h.employeeHandler.GetEmployeeDetails)(c)
+	case "hrms.hr.doctype.employee.employee.search":
+		return h.wrapHandler(h.employeeHandler.SearchEmployees)(c)
+	case "hrms.hr.doctype.employee.employee.get_reporting_structure":
+		return h.wrapHandler(h.employeeHandler.GetReportingStructure)(c)
+	case "hrms.hr.doctype.employee.employee.get_field_value":
+		return h.wrapHandler(h.employeeHandler.GetEmployeeFieldValue)(c)
+
+	// Shift Type methods
+	case "hrms.hr.doctype.shift_type.shift_type.get":
+		return h.wrapHandler(h.shiftHandler.GetShiftType)(c)
+	case "hrms.hr.doctype.shift_type.shift_type.list":
+		return h.wrapHandler(h.shiftHandler.ListShiftTypes)(c)
+	case "hrms.hr.doctype.shift_type.shift_type.get_shift_details":
+		return h.wrapHandler(h.shiftHandler.GetShiftDetails)(c)
+
+	// Shift Assignment methods
+	case "hrms.hr.doctype.shift_assignment.shift_assignment.assign_shift":
+		return h.wrapHandler(h.shiftHandler.AssignShift)(c)
+	case "hrms.hr.doctype.shift_assignment.shift_assignment.get_current_shift":
+		return h.wrapHandler(h.shiftHandler.GetCurrentShift)(c)
+	case "hrms.hr.doctype.shift_assignment.shift_assignment.get_for_employee":
+		return h.wrapHandler(h.shiftHandler.GetShiftAssignmentsForEmployee)(c)
+
+	// Shift Request methods
+	case "hrms.hr.doctype.shift_request.shift_request.create":
+		return h.wrapHandler(h.shiftHandler.CreateShiftRequest)(c)
+	case "hrms.hr.doctype.shift_request.shift_request.approve":
+		return h.wrapHandler(h.shiftHandler.ApproveShiftRequest)(c)
+	case "hrms.hr.doctype.shift_request.shift_request.reject":
+		return h.wrapHandler(h.shiftHandler.RejectShiftRequest)(c)
+	case "hrms.hr.doctype.shift_request.shift_request.list":
+		return h.wrapHandler(h.shiftHandler.ListShiftRequests)(c)
 
 	default:
 		return frappeCore.SendError(c, fiber.StatusNotFound, "Method not found: "+method, frappeCore.ErrTypeNotFound)

@@ -17,6 +17,8 @@ import (
 	"github.com/OtchereDev/hrms-go/internal/core"
 	"github.com/OtchereDev/hrms-go/internal/core/frappe"
 	"github.com/OtchereDev/hrms-go/internal/core/services/auth"
+	"github.com/OtchereDev/hrms-go/internal/core/services/holiday"
+	"github.com/OtchereDev/hrms-go/internal/core/services/shift"
 	"github.com/OtchereDev/hrms-go/pkg/logger"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/compress"
@@ -61,6 +63,8 @@ func main() {
 	// Initialize services
 	authService := auth.NewAuthService(db.DB, cfg)
 	jwtService := auth.NewJWTService(&cfg.JWT)
+	holidayService := holiday.NewHolidayService(db.DB)
+	shiftService := shift.NewShiftService(db.DB)
 
 	// Initialize middleware
 	authMiddleware := middleware.NewAuthMiddleware(jwtService, authService)
@@ -73,6 +77,8 @@ func main() {
 	leaveHandler := handlers.NewLeaveHandler(db.DB)
 	payrollHandler := handlers.NewPayrollHandler(db.DB)
 	performanceHandler := handlers.NewPerformanceHandler(db.DB)
+	holidayHandler := handlers.NewHolidayHandler(holidayService)
+	shiftHandler := handlers.NewShiftHandler(shiftService)
 
 	// Initialize Frappe compatibility layer
 	doctypeService := frappe.NewDocTypeService(db.DB)
@@ -83,6 +89,9 @@ func main() {
 		leaveHandler,
 		payrollHandler,
 		performanceHandler,
+		holidayHandler,
+		employeeHandler,
+		shiftHandler,
 	)
 
 	// Create Fiber app

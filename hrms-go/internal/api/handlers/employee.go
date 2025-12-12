@@ -262,3 +262,75 @@ func (h *EmployeeHandler) UpdateEmployeeStatus(c *fiber.Ctx) error {
 
 	return response.Success(c, nil, "Employee status updated successfully")
 }
+
+// GetEmployeeDetails retrieves detailed employee information
+// GET /api/method/hrms.hr.doctype.employee.employee.get_employee_details
+func (h *EmployeeHandler) GetEmployeeDetails(c *fiber.Ctx) error {
+	employeeNumber := c.Query("employee_number")
+	if employeeNumber == "" {
+		return response.BadRequest(c, "employee_number is required")
+	}
+
+	details, err := h.employeeService.GetEmployeeDetails(c.Context(), employeeNumber)
+	if err != nil {
+		return response.NotFound(c, "employee not found")
+	}
+
+	return response.Success(c, details, "Employee details retrieved successfully")
+}
+
+// SearchEmployees searches for employees
+// GET /api/method/hrms.hr.doctype.employee.employee.search
+func (h *EmployeeHandler) SearchEmployees(c *fiber.Ctx) error {
+	query := c.Query("query")
+	department := c.Query("department")
+	designation := c.Query("designation")
+	status := c.Query("status")
+	limit, _ := strconv.Atoi(c.Query("limit", "20"))
+
+	employees, err := h.employeeService.SearchEmployees(c.Context(), query, department, designation, status, limit)
+	if err != nil {
+		return response.InternalServerError(c, "failed to search employees")
+	}
+
+	return response.Success(c, employees, "Employees retrieved successfully")
+}
+
+// GetReportingStructure retrieves reporting hierarchy for an employee
+// GET /api/method/hrms.hr.doctype.employee.employee.get_reporting_structure
+func (h *EmployeeHandler) GetReportingStructure(c *fiber.Ctx) error {
+	employeeNumber := c.Query("employee_number")
+	if employeeNumber == "" {
+		return response.BadRequest(c, "employee_number is required")
+	}
+
+	structure, err := h.employeeService.GetReportingStructure(c.Context(), employeeNumber)
+	if err != nil {
+		return response.NotFound(c, "employee not found")
+	}
+
+	return response.Success(c, structure, "Reporting structure retrieved successfully")
+}
+
+// GetEmployeeFieldValue retrieves a specific field value for an employee
+// GET /api/method/hrms.hr.doctype.employee.employee.get_field_value
+func (h *EmployeeHandler) GetEmployeeFieldValue(c *fiber.Ctx) error {
+	employeeNumber := c.Query("employee_number")
+	fieldName := c.Query("field_name")
+
+	if employeeNumber == "" || fieldName == "" {
+		return response.BadRequest(c, "employee_number and field_name are required")
+	}
+
+	value, err := h.employeeService.GetEmployeeFieldValue(c.Context(), employeeNumber, fieldName)
+	if err != nil {
+		return response.BadRequest(c, err.Error())
+	}
+
+	result := map[string]interface{}{
+		"field_name":  fieldName,
+		"field_value": value,
+	}
+
+	return response.Success(c, result, "Field value retrieved successfully")
+}

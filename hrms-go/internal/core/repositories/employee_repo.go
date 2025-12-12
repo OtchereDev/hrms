@@ -267,3 +267,8 @@ type EmployeeDetails struct {
 	InternalWorkHistory []hr.EmployeeInternalWorkHistory
 	Skills              []hr.EmployeeSkill
 }
+
+// GetDB returns the database instance
+func (r *EmployeeRepository) GetDB() *gorm.DB {
+	return r.db
+}
