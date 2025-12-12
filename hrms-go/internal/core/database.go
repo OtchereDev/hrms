@@ -7,6 +7,7 @@ import (
 
 	"github.com/OtchereDev/hrms-go/internal/config"
 	"github.com/OtchereDev/hrms-go/internal/core/models/base"
+	"github.com/OtchereDev/hrms-go/internal/core/models/hr"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
@@ -77,9 +78,35 @@ func (db *Database) AutoMigrate() error {
 		return fmt.Errorf("failed to migrate base models: %w", err)
 	}
 
+	// Migrate HR organization models
+	if err := db.DB.AutoMigrate(
+		&hr.Company{},
+		&hr.Department{},
+		&hr.DepartmentApprover{},
+		&hr.Branch{},
+		&hr.Designation{},
+		&hr.EmploymentType{},
+		&hr.EmployeeGrade{},
+		&hr.HolidayList{},
+		&hr.Holiday{},
+	); err != nil {
+		return fmt.Errorf("failed to migrate HR organization models: %w", err)
+	}
+
+	// Migrate HR employee models
+	if err := db.DB.AutoMigrate(
+		&hr.Employee{},
+		&hr.EmployeeEducation{},
+		&hr.EmployeeExternalWorkHistory{},
+		&hr.EmployeeInternalWorkHistory{},
+		&hr.EmployeeSkill{},
+	); err != nil {
+		return fmt.Errorf("failed to migrate HR employee models: %w", err)
+	}
+
 	// TODO: Add more model migrations as we create them
-	// &hr.Employee{},
 	// &hr.Attendance{},
+	// &hr.LeaveApplication{},
 	// &payroll.SalarySlip{},
 	// etc.
 

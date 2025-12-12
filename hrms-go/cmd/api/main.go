@@ -66,6 +66,7 @@ func main() {
 
 	// Initialize handlers
 	authHandler := handlers.NewAuthHandler(authService)
+	employeeHandler := handlers.NewEmployeeHandler(db.DB)
 
 	// Create Fiber app
 	app := fiber.New(fiber.Config{
@@ -108,7 +109,7 @@ func main() {
 	}))
 
 	// Setup routes
-	routes.SetupRoutes(app, authHandler, authMiddleware, permMiddleware)
+	routes.SetupRoutes(app, authHandler, employeeHandler, authMiddleware, permMiddleware)
 
 	// Start server
 	addr := fmt.Sprintf("%s:%d", cfg.Server.Host, cfg.Server.Port)
