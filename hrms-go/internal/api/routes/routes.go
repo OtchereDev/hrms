@@ -67,6 +67,10 @@ func SetupRoutes(
 	method.Get("/frappe.auth.get_logged_user", sessionMiddleware.RequireSession, frappeAuthHandler.GetLoggedUser)
 	method.Get("/frappe.sessions.get_session_info", sessionMiddleware.Authenticate, frappeAuthHandler.GetSessionInfo)
 
+	// DocType metadata endpoints (can be accessed without authentication for form load)
+	method.All("/frappe.desk.form.load.getdoctype", resourceHandler.GetMeta)
+	method.All("/frappe.client.get_meta", resourceHandler.GetMeta)
+
 	// JWT authentication routes (for API clients)
 	method.Post("/jwt/login", authHandler.Login)
 	method.Post("/jwt/logout", authMiddleware.Authenticate, authHandler.Logout)

@@ -58,22 +58,44 @@ func (h *ResourceHandler) GetList(c *fiber.Ctx) error {
 	}
 
 	// Parse filters from query parameter
-	filtersStr := c.Query("filters", "{}")
-	var filters map[string]interface{}
-	if err := json.Unmarshal([]byte(filtersStr), &filters); err != nil {
-		return frappeCore.SendValidationError(c, []frappeCore.ValidationError{
-			{Field: "filters", Message: "Invalid filters format"},
-		})
+	filtersStr := c.Query("filters", "")
+	var filters []frappeCore.Filter
+	if filtersStr != "" {
+		parsedFilters, err := frappeCore.ParseFilters(filtersStr)
+		if err != nil {
+			return frappeCore.SendValidationError(c, []frappeCore.ValidationError{
+				{Field: "filters", Message: "Invalid filters format: " + err.Error()},
+			})
+		}
+		filters = parsedFilters
+	}
+
+	// Parse or_filters from query parameter
+	orFiltersStr := c.Query("or_filters", "")
+	var orFilters []frappeCore.Filter
+	if orFiltersStr != "" {
+		parsedOrFilters, err := frappeCore.ParseOrFilters(orFiltersStr)
+		if err != nil {
+			return frappeCore.SendValidationError(c, []frappeCore.ValidationError{
+				{Field: "or_filters", Message: "Invalid or_filters format: " + err.Error()},
+			})
+		}
+		orFilters = parsedOrFilters
 	}
 
 	// Parse fields
 	fieldsStr := c.Query("fields", "[]")
 	var fields []string
-	if err := json.Unmarshal([]byte(fieldsStr), &fields); err != nil {
-		return frappeCore.SendValidationError(c, []frappeCore.ValidationError{
-			{Field: "fields", Message: "Invalid fields format"},
-		})
+	if fieldsStr != "[]" && fieldsStr != "" {
+		if err := json.Unmarshal([]byte(fieldsStr), &fields); err != nil {
+			return frappeCore.SendValidationError(c, []frappeCore.ValidationError{
+				{Field: "fields", Message: "Invalid fields format"},
+			})
+		}
 	}
+
+	// Parse order_by
+	orderBy := c.Query("order_by", "")
 
 	// Parse pagination
 	limit, _ := strconv.Atoi(c.Query("limit", "20"))
@@ -88,8 +110,8 @@ func (h *ResourceHandler) GetList(c *fiber.Ctx) error {
 		limit, _ = strconv.Atoi(limitPageLength)
 	}
 
-	// Get documents
-	docs, total, err := h.doctypeService.GetList(c.Context(), doctype, filters, fields, limit, offset)
+	// Get documents using advanced filter system
+	docs, total, err := h.doctypeService.GetListWithFilters(c.Context(), doctype, filters, orFilters, fields, orderBy, limit, offset)
 	if err != nil {
 		return frappeCore.SendInternalError(c, err.Error())
 	}
@@ -234,4 +256,35 @@ func (h *ResourceHandler) Cancel(c *fiber.Ctx) error {
 	}
 
 	return frappeCore.SendSuccess(c, doc)
+}
+
+// GetMeta retrieves metadata for a DocType
+// GET /api/method/frappe.desk.form.load.getdoctype
+// GET /api/method/frappe.client.get_meta (alternative)
+func (h *ResourceHandler) GetMeta(c *fiber.Ctx) error {
+	doctype := c.Query("doctype")
+	if doctype == "" {
+		// Also check in body for POST requests
+		var body map[string]interface{}
+		if err := c.BodyParser(&body); err == nil {
+			if dt, ok := body["doctype"].(string); ok {
+				doctype = dt
+			}
+		}
+	}
+
+	if doctype == "" {
+		return frappeCore.SendValidationError(c, []frappeCore.ValidationError{
+			{Field: "doctype", Message: "DocType is required"},
+		})
+	}
+
+	meta, err := h.doctypeService.GetMeta(doctype)
+	if err != nil {
+		return frappeCore.SendNotFound(c, "DocType not found: "+doctype)
+	}
+
+	return frappeCore.SendSuccess(c, map[string]interface{}{
+		"docs": []interface{}{meta},
+	})
 }

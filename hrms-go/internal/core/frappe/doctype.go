@@ -147,7 +147,7 @@ func (s *DocTypeService) GetList(ctx context.Context, doctype string, filters ma
 	// Build query
 	query := s.db.WithContext(ctx).Table(tableName)
 
-	// Apply filters
+	// Apply simple filters (for backward compatibility)
 	for key, value := range filters {
 		query = query.Where(fmt.Sprintf("%s = ?", key), value)
 	}
@@ -161,6 +161,76 @@ func (s *DocTypeService) GetList(ctx context.Context, doctype string, filters ma
 	var total int64
 	if err := query.Count(&total).Error; err != nil {
 		return nil, 0, err
+	}
+
+	// Apply pagination
+	if limit > 0 {
+		query = query.Limit(limit)
+	}
+	if offset > 0 {
+		query = query.Offset(offset)
+	}
+
+	// Execute query
+	if err := query.Find(resultsPtr.Interface()).Error; err != nil {
+		return nil, 0, err
+	}
+
+	// Convert to []interface{}
+	resultSlice := resultsPtr.Elem()
+	resultList := make([]interface{}, resultSlice.Len())
+	for i := 0; i < resultSlice.Len(); i++ {
+		resultList[i] = resultSlice.Index(i).Interface()
+	}
+
+	return resultList, total, nil
+}
+
+// GetListWithFilters retrieves a list of documents with advanced Frappe-style filters
+func (s *DocTypeService) GetListWithFilters(ctx context.Context, doctype string, filters []Filter, orFilters []Filter, fields []string, orderBy string, limit, offset int) ([]interface{}, int64, error) {
+	tableName, err := s.GetTableName(doctype)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	model, err := s.GetModelForDocType(doctype)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	// Create slice of the model type
+	modelType := reflect.TypeOf(model).Elem()
+	sliceType := reflect.SliceOf(reflect.PtrTo(modelType))
+	results := reflect.MakeSlice(sliceType, 0, 0)
+	resultsPtr := reflect.New(sliceType)
+	resultsPtr.Elem().Set(results)
+
+	// Build query
+	query := s.db.WithContext(ctx).Table(tableName)
+
+	// Apply AND filters
+	query = ApplyFilters(query, filters)
+
+	// Apply OR filters
+	query = ApplyOrFilters(query, orFilters)
+
+	// Select specific fields if provided
+	if len(fields) > 0 {
+		query = query.Select(fields)
+	}
+
+	// Get total count before pagination
+	var total int64
+	countQuery := query
+	if err := countQuery.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	// Apply ordering
+	if orderBy != "" {
+		query = query.Order(orderBy)
+	} else {
+		query = query.Order("id DESC")
 	}
 
 	// Apply pagination
