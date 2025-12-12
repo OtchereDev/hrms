@@ -104,10 +104,56 @@ func (db *Database) AutoMigrate() error {
 		return fmt.Errorf("failed to migrate HR employee models: %w", err)
 	}
 
+	// Migrate Attendance models
+	if err := db.DB.AutoMigrate(
+		&hr.Attendance{},
+		&hr.ShiftType{},
+		&hr.ShiftAssignment{},
+		&hr.EmployeeCheckin{},
+		&hr.AttendanceRequest{},
+		&hr.ShiftRequest{},
+		&hr.AttendanceDeviceSettings{},
+	); err != nil {
+		return fmt.Errorf("failed to migrate attendance models: %w", err)
+	}
+
+	// Migrate Leave models
+	if err := db.DB.AutoMigrate(
+		&hr.LeaveType{},
+		&hr.LeavePolicy{},
+		&hr.LeavePolicyDetail{},
+		&hr.LeavePolicyAssignment{},
+		&hr.LeaveApplication{},
+		&hr.LeaveAllocation{},
+		&hr.LeaveEncashment{},
+		&hr.CompensatoryLeaveRequest{},
+		&hr.LeaveBlockList{},
+		&hr.LeaveBlockListDate{},
+		&hr.LeaveBlockListAllowed{},
+		&hr.LeavePeriod{},
+	); err != nil {
+		return fmt.Errorf("failed to migrate leave models: %w", err)
+	}
+
+	// Migrate Employee Lifecycle models
+	if err := db.DB.AutoMigrate(
+		&hr.EmployeeOnboarding{},
+		&hr.EmployeeSeparation{},
+		&hr.EmployeeBoardingActivity{},
+		&hr.EmployeeTransfer{},
+		&hr.EmployeePromotion{},
+		&hr.EmployeeOnboardingTemplate{},
+		&hr.EmployeeSeparationTemplate{},
+		&hr.EmployeeBoardingTemplateActivity{},
+		&hr.ExitInterview{},
+		&hr.EmployeeGrievance{},
+	); err != nil {
+		return fmt.Errorf("failed to migrate employee lifecycle models: %w", err)
+	}
+
 	// TODO: Add more model migrations as we create them
-	// &hr.Attendance{},
-	// &hr.LeaveApplication{},
 	// &payroll.SalarySlip{},
+	// &payroll.SalaryStructure{},
 	// etc.
 
 	log.Println("Database migrations completed successfully")
