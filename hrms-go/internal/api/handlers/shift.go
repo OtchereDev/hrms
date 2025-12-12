@@ -4,9 +4,9 @@ import (
 	"strconv"
 	"time"
 
+	frappeResponse "github.com/OtchereDev/hrms-go/internal/core/frappe"
 	"github.com/OtchereDev/hrms-go/internal/core/models/hr"
 	"github.com/OtchereDev/hrms-go/internal/core/services/shift"
-	"github.com/OtchereDev/hrms-go/pkg/response"
 	"github.com/gofiber/fiber/v2"
 )
 
@@ -27,15 +27,15 @@ func NewShiftHandler(shiftService *shift.ShiftService) *ShiftHandler {
 func (h *ShiftHandler) GetShiftType(c *fiber.Ctx) error {
 	shiftName := c.Query("shift_name")
 	if shiftName == "" {
-		return response.BadRequest(c, "shift_name is required")
+		return frappeResponse.SendBadRequest(c, "shift_name is required")
 	}
 
 	shift, err := h.shiftService.GetShiftType(c.Context(), shiftName)
 	if err != nil {
-		return response.NotFound(c, "shift type not found")
+		return frappeResponse.SendNotFound(c, "shift type not found")
 	}
 
-	return response.Success(c, shift, "Shift type retrieved successfully")
+	return frappeResponse.SendSuccess(c, shift)
 }
 
 // ListShiftTypes retrieves all shift types
@@ -43,10 +43,10 @@ func (h *ShiftHandler) GetShiftType(c *fiber.Ctx) error {
 func (h *ShiftHandler) ListShiftTypes(c *fiber.Ctx) error {
 	shifts, err := h.shiftService.ListShiftTypes(c.Context())
 	if err != nil {
-		return response.InternalServerError(c, "failed to list shift types")
+		return frappeResponse.SendInternalError(c, "failed to list shift types")
 	}
 
-	return response.Success(c, shifts, "Shift types retrieved successfully")
+	return frappeResponse.SendSuccess(c, shifts)
 }
 
 // GetShiftDetails retrieves detailed information about a shift
@@ -54,15 +54,15 @@ func (h *ShiftHandler) ListShiftTypes(c *fiber.Ctx) error {
 func (h *ShiftHandler) GetShiftDetails(c *fiber.Ctx) error {
 	shiftName := c.Query("shift_name")
 	if shiftName == "" {
-		return response.BadRequest(c, "shift_name is required")
+		return frappeResponse.SendBadRequest(c, "shift_name is required")
 	}
 
 	details, err := h.shiftService.GetShiftDetails(c.Context(), shiftName)
 	if err != nil {
-		return response.NotFound(c, "shift type not found")
+		return frappeResponse.SendNotFound(c, "shift type not found")
 	}
 
-	return response.Success(c, details, "Shift details retrieved successfully")
+	return frappeResponse.SendSuccess(c, details)
 }
 
 // AssignShift assigns a shift to an employee
@@ -76,29 +76,29 @@ func (h *ShiftHandler) AssignShift(c *fiber.Ctx) error {
 	approvedBy := c.Query("approved_by")
 
 	if employee == "" || shiftType == "" || company == "" || fromDateStr == "" {
-		return response.BadRequest(c, "employee, shift_type, company, and from_date are required")
+		return frappeResponse.SendBadRequest(c, "employee, shift_type, company, and from_date are required")
 	}
 
 	fromDate, err := time.Parse("2006-01-02", fromDateStr)
 	if err != nil {
-		return response.BadRequest(c, "invalid from_date format, expected YYYY-MM-DD")
+		return frappeResponse.SendBadRequest(c, "invalid from_date format, expected YYYY-MM-DD")
 	}
 
 	var toDate *time.Time
 	if toDateStr != "" {
 		td, err := time.Parse("2006-01-02", toDateStr)
 		if err != nil {
-			return response.BadRequest(c, "invalid to_date format, expected YYYY-MM-DD")
+			return frappeResponse.SendBadRequest(c, "invalid to_date format, expected YYYY-MM-DD")
 		}
 		toDate = &td
 	}
 
 	assignment, err := h.shiftService.AssignShift(c.Context(), employee, shiftType, company, fromDate, toDate, approvedBy)
 	if err != nil {
-		return response.BadRequest(c, err.Error())
+		return frappeResponse.SendBadRequest(c, err.Error())
 	}
 
-	return response.Success(c, assignment, "Shift assigned successfully")
+	return frappeResponse.SendSuccess(c, assignment)
 }
 
 // GetCurrentShift retrieves the current shift for an employee
@@ -108,7 +108,7 @@ func (h *ShiftHandler) GetCurrentShift(c *fiber.Ctx) error {
 	dateStr := c.Query("date")
 
 	if employee == "" {
-		return response.BadRequest(c, "employee is required")
+		return frappeResponse.SendBadRequest(c, "employee is required")
 	}
 
 	var date time.Time
@@ -116,7 +116,7 @@ func (h *ShiftHandler) GetCurrentShift(c *fiber.Ctx) error {
 		var err error
 		date, err = time.Parse("2006-01-02", dateStr)
 		if err != nil {
-			return response.BadRequest(c, "invalid date format, expected YYYY-MM-DD")
+			return frappeResponse.SendBadRequest(c, "invalid date format, expected YYYY-MM-DD")
 		}
 	} else {
 		date = time.Now()
@@ -124,7 +124,7 @@ func (h *ShiftHandler) GetCurrentShift(c *fiber.Ctx) error {
 
 	assignment, shiftType, err := h.shiftService.GetCurrentShift(c.Context(), employee, date)
 	if err != nil {
-		return response.NotFound(c, "no active shift found for employee")
+		return frappeResponse.SendNotFound(c, "no active shift found for employee")
 	}
 
 	result := map[string]interface{}{
@@ -132,7 +132,7 @@ func (h *ShiftHandler) GetCurrentShift(c *fiber.Ctx) error {
 		"shift_type":       shiftType,
 	}
 
-	return response.Success(c, result, "Current shift retrieved successfully")
+	return frappeResponse.SendSuccess(c, result)
 }
 
 // GetShiftAssignmentsForEmployee retrieves all shift assignments for an employee
@@ -142,15 +142,15 @@ func (h *ShiftHandler) GetShiftAssignmentsForEmployee(c *fiber.Ctx) error {
 	status := c.Query("status")
 
 	if employee == "" {
-		return response.BadRequest(c, "employee is required")
+		return frappeResponse.SendBadRequest(c, "employee is required")
 	}
 
 	assignments, err := h.shiftService.GetShiftAssignmentsForEmployee(c.Context(), employee, status)
 	if err != nil {
-		return response.InternalServerError(c, "failed to get shift assignments")
+		return frappeResponse.SendInternalError(c, "failed to get shift assignments")
 	}
 
-	return response.Success(c, assignments, "Shift assignments retrieved successfully")
+	return frappeResponse.SendSuccess(c, assignments)
 }
 
 // CreateShiftRequest creates a new shift request
@@ -164,19 +164,19 @@ func (h *ShiftHandler) CreateShiftRequest(c *fiber.Ctx) error {
 	reason := c.Query("reason")
 
 	if employee == "" || shiftType == "" || company == "" || fromDateStr == "" {
-		return response.BadRequest(c, "employee, shift_type, company, and from_date are required")
+		return frappeResponse.SendBadRequest(c, "employee, shift_type, company, and from_date are required")
 	}
 
 	fromDate, err := time.Parse("2006-01-02", fromDateStr)
 	if err != nil {
-		return response.BadRequest(c, "invalid from_date format, expected YYYY-MM-DD")
+		return frappeResponse.SendBadRequest(c, "invalid from_date format, expected YYYY-MM-DD")
 	}
 
 	var toDate *time.Time
 	if toDateStr != "" {
 		td, err := time.Parse("2006-01-02", toDateStr)
 		if err != nil {
-			return response.BadRequest(c, "invalid to_date format, expected YYYY-MM-DD")
+			return frappeResponse.SendBadRequest(c, "invalid to_date format, expected YYYY-MM-DD")
 		}
 		toDate = &td
 	}
@@ -191,10 +191,10 @@ func (h *ShiftHandler) CreateShiftRequest(c *fiber.Ctx) error {
 
 	err = h.shiftService.CreateShiftRequest(c.Context(), request)
 	if err != nil {
-		return response.BadRequest(c, err.Error())
+		return frappeResponse.SendBadRequest(c, err.Error())
 	}
 
-	return response.Success(c, request, "Shift request created successfully")
+	return frappeResponse.SendSuccess(c, request)
 }
 
 // ApproveShiftRequest approves a shift request
@@ -204,20 +204,20 @@ func (h *ShiftHandler) ApproveShiftRequest(c *fiber.Ctx) error {
 	approvedBy := c.Query("approved_by")
 
 	if idStr == "" {
-		return response.BadRequest(c, "id is required")
+		return frappeResponse.SendBadRequest(c, "id is required")
 	}
 
 	id, err := strconv.ParseUint(idStr, 10, 32)
 	if err != nil {
-		return response.BadRequest(c, "invalid id")
+		return frappeResponse.SendBadRequest(c, "invalid id")
 	}
 
 	request, err := h.shiftService.ApproveShiftRequest(c.Context(), uint(id), approvedBy)
 	if err != nil {
-		return response.BadRequest(c, err.Error())
+		return frappeResponse.SendBadRequest(c, err.Error())
 	}
 
-	return response.Success(c, request, "Shift request approved successfully")
+	return frappeResponse.SendSuccess(c, request)
 }
 
 // RejectShiftRequest rejects a shift request
@@ -228,20 +228,20 @@ func (h *ShiftHandler) RejectShiftRequest(c *fiber.Ctx) error {
 	reason := c.Query("reason")
 
 	if idStr == "" {
-		return response.BadRequest(c, "id is required")
+		return frappeResponse.SendBadRequest(c, "id is required")
 	}
 
 	id, err := strconv.ParseUint(idStr, 10, 32)
 	if err != nil {
-		return response.BadRequest(c, "invalid id")
+		return frappeResponse.SendBadRequest(c, "invalid id")
 	}
 
 	request, err := h.shiftService.RejectShiftRequest(c.Context(), uint(id), rejectedBy, reason)
 	if err != nil {
-		return response.BadRequest(c, err.Error())
+		return frappeResponse.SendBadRequest(c, err.Error())
 	}
 
-	return response.Success(c, request, "Shift request rejected successfully")
+	return frappeResponse.SendSuccess(c, request)
 }
 
 // ListShiftRequests retrieves shift requests with filters
@@ -252,8 +252,8 @@ func (h *ShiftHandler) ListShiftRequests(c *fiber.Ctx) error {
 
 	requests, err := h.shiftService.ListShiftRequests(c.Context(), employee, status)
 	if err != nil {
-		return response.InternalServerError(c, "failed to list shift requests")
+		return frappeResponse.SendInternalError(c, "failed to list shift requests")
 	}
 
-	return response.Success(c, requests, "Shift requests retrieved successfully")
+	return frappeResponse.SendSuccess(c, requests)
 }

@@ -125,3 +125,14 @@ func SendList(c *fiber.Ctx, data interface{}, totalCount int64, page, pageSize i
 		PageSize:   pageSize,
 	})
 }
+
+// SendCreated sends a created response (201)
+func SendCreated(c *fiber.Ctx, data interface{}) error {
+	return c.Status(fiber.StatusCreated).JSON(Success(data))
+}
+
+// SendBadRequest sends a bad request error (400)
+func SendBadRequest(c *fiber.Ctx, message string) error {
+	return SendError(c, fiber.StatusBadRequest, message, ErrTypeValidation)
+}
+

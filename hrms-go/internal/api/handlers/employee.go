@@ -3,6 +3,7 @@ package handlers
 import (
 	"strconv"
 
+	frappeResponse "github.com/OtchereDev/hrms-go/internal/core/frappe"
 	"github.com/OtchereDev/hrms-go/internal/api/middleware"
 	"github.com/OtchereDev/hrms-go/internal/core/repositories"
 	"github.com/OtchereDev/hrms-go/internal/core/services/employee"
@@ -268,15 +269,15 @@ func (h *EmployeeHandler) UpdateEmployeeStatus(c *fiber.Ctx) error {
 func (h *EmployeeHandler) GetEmployeeDetails(c *fiber.Ctx) error {
 	employeeNumber := c.Query("employee_number")
 	if employeeNumber == "" {
-		return response.BadRequest(c, "employee_number is required")
+		return frappeResponse.SendBadRequest(c, "employee_number is required")
 	}
 
 	details, err := h.employeeService.GetEmployeeDetails(c.Context(), employeeNumber)
 	if err != nil {
-		return response.NotFound(c, "employee not found")
+		return frappeResponse.SendNotFound(c, "employee not found")
 	}
 
-	return response.Success(c, details, "Employee details retrieved successfully")
+	return frappeResponse.SendSuccess(c, details)
 }
 
 // SearchEmployees searches for employees
@@ -290,10 +291,10 @@ func (h *EmployeeHandler) SearchEmployees(c *fiber.Ctx) error {
 
 	employees, err := h.employeeService.SearchEmployees(c.Context(), query, department, designation, status, limit)
 	if err != nil {
-		return response.InternalServerError(c, "failed to search employees")
+		return frappeResponse.SendInternalError(c, "failed to search employees")
 	}
 
-	return response.Success(c, employees, "Employees retrieved successfully")
+	return frappeResponse.SendSuccess(c, employees)
 }
 
 // GetReportingStructure retrieves reporting hierarchy for an employee
@@ -301,15 +302,15 @@ func (h *EmployeeHandler) SearchEmployees(c *fiber.Ctx) error {
 func (h *EmployeeHandler) GetReportingStructure(c *fiber.Ctx) error {
 	employeeNumber := c.Query("employee_number")
 	if employeeNumber == "" {
-		return response.BadRequest(c, "employee_number is required")
+		return frappeResponse.SendBadRequest(c, "employee_number is required")
 	}
 
 	structure, err := h.employeeService.GetReportingStructure(c.Context(), employeeNumber)
 	if err != nil {
-		return response.NotFound(c, "employee not found")
+		return frappeResponse.SendNotFound(c, "employee not found")
 	}
 
-	return response.Success(c, structure, "Reporting structure retrieved successfully")
+	return frappeResponse.SendSuccess(c, structure)
 }
 
 // GetEmployeeFieldValue retrieves a specific field value for an employee
@@ -319,12 +320,12 @@ func (h *EmployeeHandler) GetEmployeeFieldValue(c *fiber.Ctx) error {
 	fieldName := c.Query("field_name")
 
 	if employeeNumber == "" || fieldName == "" {
-		return response.BadRequest(c, "employee_number and field_name are required")
+		return frappeResponse.SendBadRequest(c, "employee_number and field_name are required")
 	}
 
 	value, err := h.employeeService.GetEmployeeFieldValue(c.Context(), employeeNumber, fieldName)
 	if err != nil {
-		return response.BadRequest(c, err.Error())
+		return frappeResponse.SendBadRequest(c, err.Error())
 	}
 
 	result := map[string]interface{}{
@@ -332,5 +333,5 @@ func (h *EmployeeHandler) GetEmployeeFieldValue(c *fiber.Ctx) error {
 		"field_value": value,
 	}
 
-	return response.Success(c, result, "Field value retrieved successfully")
+	return frappeResponse.SendSuccess(c, result)
 }
