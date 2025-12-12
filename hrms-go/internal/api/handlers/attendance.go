@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"strconv"
 	"time"
 
@@ -242,4 +243,87 @@ func (h *AttendanceHandler) RejectAttendanceRequest(c *fiber.Ctx) error {
 	}
 
 	return response.Success(c, attendanceReq, "Attendance request rejected successfully")
+}
+
+// GetUnmarkedDays returns days without attendance records
+// GET /api/method/hrms.hr.doctype.attendance.attendance.get_unmarked_days
+func (h *AttendanceHandler) GetUnmarkedDays(c *fiber.Ctx) error {
+	employee := c.Query("employee")
+	fromDateStr := c.Query("from_date")
+	toDateStr := c.Query("to_date")
+	excludeHolidays := c.Query("exclude_holidays") == "1"
+
+	if employee == "" || fromDateStr == "" || toDateStr == "" {
+		return response.BadRequest(c, "employee, from_date, and to_date are required")
+	}
+
+	fromDate, err := time.Parse("2006-01-02", fromDateStr)
+	if err != nil {
+		return response.BadRequest(c, "invalid from_date format, expected YYYY-MM-DD")
+	}
+
+	toDate, err := time.Parse("2006-01-02", toDateStr)
+	if err != nil {
+		return response.BadRequest(c, "invalid to_date format, expected YYYY-MM-DD")
+	}
+
+	unmarkedDays, err := h.attendanceService.GetUnmarkedDays(c.Context(), employee, fromDate, toDate, excludeHolidays)
+	if err != nil {
+		return response.InternalServerError(c, "failed to get unmarked days")
+	}
+
+	return response.Success(c, unmarkedDays, "Unmarked days retrieved successfully")
+}
+
+// MarkBulkAttendance marks attendance for multiple days
+// POST /api/method/hrms.hr.doctype.attendance.attendance.mark_bulk_attendance
+func (h *AttendanceHandler) MarkBulkAttendance(c *fiber.Ctx) error {
+	var req attendance.MarkBulkAttendanceRequest
+	if err := c.BodyParser(&req); err != nil {
+		return response.BadRequest(c, "invalid request body")
+	}
+
+	if err := h.attendanceService.MarkBulkAttendance(c.Context(), &req); err != nil {
+		return response.InternalServerError(c, "failed to mark bulk attendance")
+	}
+
+	return response.Success(c, nil, "Bulk attendance marked successfully")
+}
+
+// GetEvents returns attendance events for calendar view
+// GET /api/method/hrms.hr.doctype.attendance.attendance.get_events
+func (h *AttendanceHandler) GetEvents(c *fiber.Ctx) error {
+	employee := c.Query("employee")
+	startStr := c.Query("start")
+	endStr := c.Query("end")
+	filtersStr := c.Query("filters")
+
+	if employee == "" || startStr == "" || endStr == "" {
+		return response.BadRequest(c, "employee, start, and end are required")
+	}
+
+	start, err := time.Parse("2006-01-02", startStr)
+	if err != nil {
+		return response.BadRequest(c, "invalid start date format, expected YYYY-MM-DD")
+	}
+
+	end, err := time.Parse("2006-01-02", endStr)
+	if err != nil {
+		return response.BadRequest(c, "invalid end date format, expected YYYY-MM-DD")
+	}
+
+	// Parse filters if provided
+	filters := make(map[string]interface{})
+	if filtersStr != "" {
+		if err := json.Unmarshal([]byte(filtersStr), &filters); err != nil {
+			return response.BadRequest(c, "invalid filters format")
+		}
+	}
+
+	events, err := h.attendanceService.GetEvents(c.Context(), employee, start, end, filters)
+	if err != nil {
+		return response.InternalServerError(c, "failed to get events")
+	}
+
+	return response.Success(c, events, "Events retrieved successfully")
 }

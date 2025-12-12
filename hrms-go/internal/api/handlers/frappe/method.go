@@ -66,6 +66,14 @@ func (h *MethodHandler) Call(c *fiber.Ctx) error {
 	case "hrms.hr.doctype.attendance_request.attendance_request.reject":
 		return h.wrapHandler(h.attendanceHandler.RejectAttendanceRequest)(c)
 
+	// Attendance utility methods
+	case "hrms.hr.doctype.attendance.attendance.get_unmarked_days":
+		return h.wrapHandler(h.attendanceHandler.GetUnmarkedDays)(c)
+	case "hrms.hr.doctype.attendance.attendance.mark_bulk_attendance":
+		return h.wrapHandler(h.attendanceHandler.MarkBulkAttendance)(c)
+	case "hrms.hr.doctype.attendance.attendance.get_events":
+		return h.wrapHandler(h.attendanceHandler.GetEvents)(c)
+
 	// Leave Application methods
 	case "hrms.hr.doctype.leave_application.leave_application.apply_leave":
 		return h.wrapHandler(h.leaveHandler.ApplyLeave)(c)
@@ -93,6 +101,16 @@ func (h *MethodHandler) Call(c *fiber.Ctx) error {
 	// Leave Encashment methods
 	case "hrms.hr.doctype.leave_encashment.leave_encashment.create":
 		return h.wrapHandler(h.leaveHandler.CreateLeaveEncashment)(c)
+
+	// Leave utility methods
+	case "hrms.hr.doctype.leave_application.leave_application.get_leave_details":
+		return h.wrapHandler(h.leaveHandler.GetLeaveDetails)(c)
+	case "hrms.hr.doctype.leave_application.leave_application.get_number_of_leave_days":
+		return h.wrapHandler(h.leaveHandler.GetNumberOfLeaveDays)(c)
+	case "hrms.hr.doctype.leave_application.leave_application.get_leave_balance_on":
+		return h.wrapHandler(h.leaveHandler.GetLeaveBalanceOn)(c)
+	case "hrms.hr.doctype.leave_application.leave_application.get_leaves_for_period":
+		return h.wrapHandler(h.leaveHandler.GetLeavesForPeriod)(c)
 
 	// Salary Slip methods
 	case "hrms.payroll.doctype.salary_slip.salary_slip.generate":
@@ -131,6 +149,16 @@ func (h *MethodHandler) Call(c *fiber.Ctx) error {
 		return h.wrapHandler(h.payrollHandler.ApproveExpenseClaim)(c)
 	case "hrms.payroll.doctype.expense_claim.expense_claim.list":
 		return h.wrapHandler(h.payrollHandler.ListExpenseClaims)(c)
+
+	// Payroll utility methods
+	case "hrms.payroll.doctype.salary_slip.salary_slip.get_salary_slip_details":
+		return h.wrapHandler(h.payrollHandler.GetSalarySlipDetails)(c)
+	case "hrms.payroll.doctype.loan.loan.calculate_amounts":
+		return h.wrapHandler(h.payrollHandler.CalculateLoanAmounts)(c)
+	case "hrms.payroll.doctype.salary_slip.salary_slip.calculate_net_pay":
+		return h.wrapHandler(h.payrollHandler.CalculateNetPay)(c)
+	case "hrms.payroll.doctype.payroll_entry.payroll_entry.get_payroll_summary":
+		return h.wrapHandler(h.payrollHandler.GetPayrollSummary)(c)
 
 	// Appraisal methods
 	case "hrms.hr.doctype.appraisal.appraisal.create":

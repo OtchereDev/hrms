@@ -434,3 +434,108 @@ func (s *LeaveService) validateAllocateLeaveRequest(req *AllocateLeaveRequest) e
 	}
 	return nil
 }
+
+// GetLeaveDetails returns leave details for an employee on a specific date
+func (s *LeaveService) GetLeaveDetails(ctx context.Context, employee string, date time.Time, forSalarySlip bool) (*hr.LeaveApplication, error) {
+	filter := repositories.LeaveApplicationFilter{
+		Employee:  employee,
+		StartDate: &date,
+		EndDate:   &date,
+		Status:    "Approved",
+	}
+
+	leaves, _, err := s.leaveRepo.ListApplications(ctx, filter, 1, 1)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(leaves) == 0 {
+		return nil, nil
+	}
+
+	return leaves[0], nil
+}
+
+// GetNumberOfLeaveDays calculates the number of leave days between dates
+func (s *LeaveService) GetNumberOfLeaveDays(ctx context.Context, employee, leaveType string, fromDate, toDate time.Time, halfDay bool, halfDayDate *time.Time) (float64, error) {
+	if fromDate.After(toDate) {
+		return 0, fmt.Errorf("from_date cannot be after to_date")
+	}
+
+	// Calculate total days
+	totalDays := toDate.Sub(fromDate).Hours()/24 + 1
+
+	// If half day is specified
+	if halfDay && halfDayDate != nil {
+		// Check if half day date is within the range
+		if (halfDayDate.Equal(fromDate) || halfDayDate.After(fromDate)) &&
+		   (halfDayDate.Equal(toDate) || halfDayDate.Before(toDate)) {
+			totalDays -= 0.5
+		}
+	}
+
+	// TODO: Exclude holidays based on employee's holiday list
+	// This would require a holiday repository/service
+
+	return totalDays, nil
+}
+
+// GetLeaveBalanceOn returns the leave balance for an employee on a specific date
+func (s *LeaveService) GetLeaveBalanceOn(ctx context.Context, employee, leaveType string, date time.Time) (float64, error) {
+	// Get all allocations for this leave type up to the date
+	filter := repositories.LeaveAllocationFilter{
+		Employee:  employee,
+		LeaveType: leaveType,
+		EndDate:   &date,
+	}
+
+	allocations, _, err := s.leaveRepo.ListAllocations(ctx, filter, 1, 10000)
+	if err != nil {
+		return 0, err
+	}
+
+	// Sum up total allocated
+	var totalAllocated float64
+	for _, allocation := range allocations {
+		totalAllocated += allocation.NewLeavesAllocated
+	}
+
+	// Get all approved leave applications up to the date
+	appFilter := repositories.LeaveApplicationFilter{
+		Employee:  employee,
+		LeaveType: leaveType,
+		Status:    "Approved",
+		EndDate:   &date,
+	}
+
+	applications, _, err := s.leaveRepo.ListApplications(ctx, appFilter, 1, 10000)
+	if err != nil {
+		return 0, err
+	}
+
+	// Calculate total used
+	var totalUsed float64
+	for _, app := range applications {
+		days, _ := s.GetNumberOfLeaveDays(ctx, employee, leaveType, app.FromDate, app.ToDate, app.HalfDay, app.HalfDayDate)
+		totalUsed += days
+	}
+
+	return totalAllocated - totalUsed, nil
+}
+
+// GetLeavesForPeriod returns all approved leaves for an employee in a date range
+func (s *LeaveService) GetLeavesForPeriod(ctx context.Context, employee string, fromDate, toDate time.Time) ([]*hr.LeaveApplication, error) {
+	filter := repositories.LeaveApplicationFilter{
+		Employee:  employee,
+		StartDate: &fromDate,
+		EndDate:   &toDate,
+		Status:    "Approved",
+	}
+
+	leaves, _, err := s.leaveRepo.ListApplications(ctx, filter, 1, 10000)
+	if err != nil {
+		return nil, err
+	}
+
+	return leaves, nil
+}

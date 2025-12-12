@@ -440,3 +440,120 @@ func (s *AttendanceService) autoMarkAttendanceFromCheckins(ctx context.Context, 
 
 	return s.attendanceRepo.Create(ctx, attendance)
 }
+
+// GetUnmarkedDays returns days without attendance records for an employee
+func (s *AttendanceService) GetUnmarkedDays(ctx context.Context, employee string, fromDate, toDate time.Time, excludeHolidays bool) ([]time.Time, error) {
+	// Get all attendance records for the period
+	filter := repository.AttendanceFilter{
+		Employee:  employee,
+		StartDate: &fromDate,
+		EndDate:   &toDate,
+	}
+
+	attendances, _, err := s.attendanceRepo.List(ctx, filter, 1, 10000)
+	if err != nil {
+		return nil, err
+	}
+
+	// Build map of marked days
+	markedDays := make(map[string]bool)
+	for _, att := range attendances {
+		dateStr := att.AttendanceDate.Format("2006-01-02")
+		markedDays[dateStr] = true
+	}
+
+	// TODO: If excludeHolidays is true, get holiday dates and add to markedDays
+	// This would require a holiday repository/service
+
+	// Find unmarked days
+	var unmarkedDays []time.Time
+	currentDate := fromDate
+	for currentDate.Before(toDate) || currentDate.Equal(toDate) {
+		dateStr := currentDate.Format("2006-01-02")
+		if !markedDays[dateStr] {
+			unmarkedDays = append(unmarkedDays, currentDate)
+		}
+		currentDate = currentDate.AddDate(0, 0, 1)
+	}
+
+	return unmarkedDays, nil
+}
+
+// MarkBulkAttendance marks attendance for multiple days
+func (s *AttendanceService) MarkBulkAttendance(ctx context.Context, data *MarkBulkAttendanceRequest) error {
+	if len(data.UnmarkedDays) == 0 {
+		return fmt.Errorf("no dates provided")
+	}
+
+	// Mark attendance for each day
+	for _, date := range data.UnmarkedDays {
+		attendance := &hr.Attendance{
+			Employee:       data.Employee,
+			AttendanceDate: date,
+			Status:         data.Status,
+			Shift:          data.Shift,
+		}
+
+		// Set half_day_status if status is Half Day
+		if data.Status == "Half Day" {
+			halfDayStatus := "Absent"
+			attendance.HalfDayStatus = &halfDayStatus
+		}
+
+		if err := s.attendanceRepo.Create(ctx, attendance); err != nil {
+			// Continue with other days even if one fails
+			// TODO: Consider collecting errors and returning them all
+			continue
+		}
+	}
+
+	return nil
+}
+
+// GetEvents returns attendance events for calendar view
+func (s *AttendanceService) GetEvents(ctx context.Context, employee string, start, end time.Time, filters map[string]interface{}) ([]map[string]interface{}, error) {
+	// Build attendance filter
+	filter := repository.AttendanceFilter{
+		Employee:  employee,
+		StartDate: &start,
+		EndDate:   &end,
+	}
+
+	// Apply additional filters if provided
+	if status, ok := filters["status"].(string); ok {
+		filter.Status = status
+	}
+
+	attendances, _, err := s.attendanceRepo.List(ctx, filter, 1, 10000)
+	if err != nil {
+		return nil, err
+	}
+
+	// Convert to event format
+	events := make([]map[string]interface{}, 0, len(attendances))
+	for _, att := range attendances {
+		event := map[string]interface{}{
+			"name":            att.ID,
+			"doctype":         "Attendance",
+			"attendance_date": att.AttendanceDate,
+			"employee_name":   att.Employee, // TODO: Get actual employee name
+			"status":          att.Status,
+			"docstatus":       att.DocStatus,
+			"title":           fmt.Sprintf("%s : %s", att.Employee, att.Status),
+		}
+		events = append(events, event)
+	}
+
+	// TODO: Add holiday events if needed
+	// This would require a holiday repository/service
+
+	return events, nil
+}
+
+// MarkBulkAttendanceRequest represents the request for bulk attendance marking
+type MarkBulkAttendanceRequest struct {
+	Employee     string      `json:"employee"`
+	UnmarkedDays []time.Time `json:"unmarked_days"`
+	Status       string      `json:"status"`
+	Shift        string      `json:"shift,omitempty"`
+}

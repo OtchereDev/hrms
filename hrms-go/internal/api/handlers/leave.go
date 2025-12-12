@@ -288,3 +288,121 @@ func (h *LeaveHandler) CreateLeaveEncashment(c *fiber.Ctx) error {
 
 	return response.Created(c, encashment, "Leave encashment created successfully")
 }
+
+// GetLeaveDetails returns leave details for an employee on a specific date
+// GET /api/method/hrms.hr.doctype.leave_application.leave_application.get_leave_details
+func (h *LeaveHandler) GetLeaveDetails(c *fiber.Ctx) error {
+	employee := c.Query("employee")
+	dateStr := c.Query("date")
+	forSalarySlip := c.Query("for_salary_slip") == "1"
+
+	if employee == "" || dateStr == "" {
+		return response.BadRequest(c, "employee and date are required")
+	}
+
+	date, err := time.Parse("2006-01-02", dateStr)
+	if err != nil {
+		return response.BadRequest(c, "invalid date format, expected YYYY-MM-DD")
+	}
+
+	leaveDetails, err := h.leaveService.GetLeaveDetails(c.Context(), employee, date, forSalarySlip)
+	if err != nil {
+		return response.InternalServerError(c, "failed to get leave details")
+	}
+
+	return response.Success(c, leaveDetails, "Leave details retrieved successfully")
+}
+
+// GetNumberOfLeaveDays calculates the number of leave days
+// GET /api/method/hrms.hr.doctype.leave_application.leave_application.get_number_of_leave_days
+func (h *LeaveHandler) GetNumberOfLeaveDays(c *fiber.Ctx) error {
+	employee := c.Query("employee")
+	leaveType := c.Query("leave_type")
+	fromDateStr := c.Query("from_date")
+	toDateStr := c.Query("to_date")
+	halfDay := c.Query("half_day") == "1"
+	halfDayDateStr := c.Query("half_day_date")
+
+	if employee == "" || leaveType == "" || fromDateStr == "" || toDateStr == "" {
+		return response.BadRequest(c, "employee, leave_type, from_date, and to_date are required")
+	}
+
+	fromDate, err := time.Parse("2006-01-02", fromDateStr)
+	if err != nil {
+		return response.BadRequest(c, "invalid from_date format, expected YYYY-MM-DD")
+	}
+
+	toDate, err := time.Parse("2006-01-02", toDateStr)
+	if err != nil {
+		return response.BadRequest(c, "invalid to_date format, expected YYYY-MM-DD")
+	}
+
+	var halfDayDate *time.Time
+	if halfDayDateStr != "" {
+		hdd, err := time.Parse("2006-01-02", halfDayDateStr)
+		if err != nil {
+			return response.BadRequest(c, "invalid half_day_date format, expected YYYY-MM-DD")
+		}
+		halfDayDate = &hdd
+	}
+
+	days, err := h.leaveService.GetNumberOfLeaveDays(c.Context(), employee, leaveType, fromDate, toDate, halfDay, halfDayDate)
+	if err != nil {
+		return response.InternalServerError(c, "failed to calculate leave days")
+	}
+
+	return response.Success(c, map[string]interface{}{"leave_days": days}, "Leave days calculated successfully")
+}
+
+// GetLeaveBalanceOn returns the leave balance on a specific date
+// GET /api/method/hrms.hr.doctype.leave_application.leave_application.get_leave_balance_on
+func (h *LeaveHandler) GetLeaveBalanceOn(c *fiber.Ctx) error {
+	employee := c.Query("employee")
+	leaveType := c.Query("leave_type")
+	dateStr := c.Query("date")
+
+	if employee == "" || leaveType == "" || dateStr == "" {
+		return response.BadRequest(c, "employee, leave_type, and date are required")
+	}
+
+	date, err := time.Parse("2006-01-02", dateStr)
+	if err != nil {
+		return response.BadRequest(c, "invalid date format, expected YYYY-MM-DD")
+	}
+
+	balance, err := h.leaveService.GetLeaveBalanceOn(c.Context(), employee, leaveType, date)
+	if err != nil {
+		return response.InternalServerError(c, "failed to get leave balance")
+	}
+
+	return response.Success(c, map[string]interface{}{"leave_balance": balance}, "Leave balance retrieved successfully")
+}
+
+// GetLeavesForPeriod returns all approved leaves for an employee in a date range
+// GET /api/method/hrms.hr.doctype.leave_application.leave_application.get_leaves_for_period
+func (h *LeaveHandler) GetLeavesForPeriod(c *fiber.Ctx) error {
+	employee := c.Query("employee")
+	fromDateStr := c.Query("from_date")
+	toDateStr := c.Query("to_date")
+
+	if employee == "" || fromDateStr == "" || toDateStr == "" {
+		return response.BadRequest(c, "employee, from_date, and to_date are required")
+	}
+
+	fromDate, err := time.Parse("2006-01-02", fromDateStr)
+	if err != nil {
+		return response.BadRequest(c, "invalid from_date format, expected YYYY-MM-DD")
+	}
+
+	toDate, err := time.Parse("2006-01-02", toDateStr)
+	if err != nil {
+		return response.BadRequest(c, "invalid to_date format, expected YYYY-MM-DD")
+	}
+
+	leaves, err := h.leaveService.GetLeavesForPeriod(c.Context(), employee, fromDate, toDate)
+	if err != nil {
+		return response.InternalServerError(c, "failed to get leaves for period")
+	}
+
+	return response.Success(c, leaves, "Leaves for period retrieved successfully")
+}

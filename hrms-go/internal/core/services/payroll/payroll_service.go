@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"time"
 
 	"github.com/OtchereDev/hrms-go/internal/core/models/payroll"
@@ -494,4 +495,123 @@ func (s *PayrollService) ListExpenseClaims(ctx context.Context, filters reposito
 	}
 
 	return s.expenseRepo.List(ctx, filters, page, pageSize)
+}
+
+// GetSalarySlipDetails returns detailed breakdown of a salary slip
+func (s *PayrollService) GetSalarySlipDetails(ctx context.Context, employee string, startDate, endDate time.Time) (map[string]interface{}, error) {
+	// Get salary slip for the period
+	filter := repositories.SalarySlipFilter{
+		Employee:  employee,
+		StartDate: &startDate,
+		EndDate:   &endDate,
+	}
+
+	slips, _, err := s.salaryRepo.ListSlips(ctx, filter, 1, 1)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(slips) == 0 {
+		return nil, fmt.Errorf("no salary slip found for the period")
+	}
+
+	slip := slips[0]
+
+	// Build detailed response
+	details := map[string]interface{}{
+		"employee":         slip.Employee,
+		"start_date":       slip.StartDate,
+		"end_date":         slip.EndDate,
+		"gross_pay":        slip.GrossPay,
+		"total_deduction":  slip.TotalDeduction,
+		"net_pay":          slip.NetPay,
+		"payment_days":     slip.PaymentDays,
+		"salary_structure": slip.SalaryStructure,
+		"status":           slip.Status,
+	}
+
+	return details, nil
+}
+
+// CalculateLoanAmounts calculates loan repayment amounts
+func (s *PayrollService) CalculateLoanAmounts(ctx context.Context, loanType string, loanAmount, rateOfInterest float64, repaymentPeriods int) (map[string]interface{}, error) {
+	if loanAmount <= 0 {
+		return nil, fmt.Errorf("loan amount must be greater than zero")
+	}
+	if repaymentPeriods <= 0 {
+		return nil, fmt.Errorf("repayment periods must be greater than zero")
+	}
+
+	// Calculate monthly interest rate
+	monthlyRate := rateOfInterest / 100 / 12
+
+	var monthlyPayment, totalPayment, totalInterest float64
+
+	if rateOfInterest > 0 {
+		// Calculate using EMI formula: P * r * (1+r)^n / ((1+r)^n - 1)
+		// Where P = principal, r = monthly rate, n = number of periods
+		numerator := loanAmount * monthlyRate * math.Pow(1+monthlyRate, float64(repaymentPeriods))
+		denominator := math.Pow(1+monthlyRate, float64(repaymentPeriods)) - 1
+		monthlyPayment = numerator / denominator
+		totalPayment = monthlyPayment * float64(repaymentPeriods)
+		totalInterest = totalPayment - loanAmount
+	} else {
+		// No interest - simple division
+		monthlyPayment = loanAmount / float64(repaymentPeriods)
+		totalPayment = loanAmount
+		totalInterest = 0
+	}
+
+	result := map[string]interface{}{
+		"monthly_payment": monthlyPayment,
+		"total_payment":   totalPayment,
+		"total_interest":  totalInterest,
+		"principal":       loanAmount,
+	}
+
+	return result, nil
+}
+
+// CalculateNetPay calculates net pay from a salary slip
+func (s *PayrollService) CalculateNetPay(ctx context.Context, slipID uint) (float64, error) {
+	slip, err := s.salaryRepo.GetSlip(ctx, slipID)
+	if err != nil {
+		return 0, err
+	}
+
+	// Net Pay = Gross Pay - Total Deductions
+	netPay := slip.GrossPay - slip.TotalDeduction
+
+	return netPay, nil
+}
+
+// GetPayrollSummary returns payroll summary for a period
+func (s *PayrollService) GetPayrollSummary(ctx context.Context, startDate, endDate time.Time, company string) (map[string]interface{}, error) {
+	filter := repositories.SalarySlipFilter{
+		StartDate: &startDate,
+		EndDate:   &endDate,
+	}
+
+	slips, total, err := s.salaryRepo.ListSlips(ctx, filter, 1, 10000)
+	if err != nil {
+		return nil, err
+	}
+
+	var totalGrossPay, totalDeductions, totalNetPay float64
+	for _, slip := range slips {
+		totalGrossPay += slip.GrossPay
+		totalDeductions += slip.TotalDeduction
+		totalNetPay += slip.NetPay
+	}
+
+	summary := map[string]interface{}{
+		"total_employees":  total,
+		"total_gross_pay":  totalGrossPay,
+		"total_deductions": totalDeductions,
+		"total_net_pay":    totalNetPay,
+		"start_date":       startDate,
+		"end_date":         endDate,
+	}
+
+	return summary, nil
 }

@@ -351,3 +351,121 @@ func (h *PayrollHandler) ListExpenseClaims(c *fiber.Ctx) error {
 
 	return response.Paginated(c, claims, page, pageSize, total)
 }
+
+// GetSalarySlipDetails returns detailed breakdown of a salary slip
+// GET /api/method/hrms.payroll.doctype.salary_slip.salary_slip.get_salary_slip_details
+func (h *PayrollHandler) GetSalarySlipDetails(c *fiber.Ctx) error {
+	employee := c.Query("employee")
+	startDateStr := c.Query("start_date")
+	endDateStr := c.Query("end_date")
+
+	if employee == "" || startDateStr == "" || endDateStr == "" {
+		return response.BadRequest(c, "employee, start_date, and end_date are required")
+	}
+
+	startDate, err := time.Parse("2006-01-02", startDateStr)
+	if err != nil {
+		return response.BadRequest(c, "invalid start_date format, expected YYYY-MM-DD")
+	}
+
+	endDate, err := time.Parse("2006-01-02", endDateStr)
+	if err != nil {
+		return response.BadRequest(c, "invalid end_date format, expected YYYY-MM-DD")
+	}
+
+	details, err := h.payrollService.GetSalarySlipDetails(c.Context(), employee, startDate, endDate)
+	if err != nil {
+		return response.InternalServerError(c, "failed to get salary slip details")
+	}
+
+	return response.Success(c, details, "Salary slip details retrieved successfully")
+}
+
+// CalculateLoanAmounts calculates loan repayment amounts
+// GET /api/method/hrms.payroll.doctype.loan.loan.calculate_amounts
+func (h *PayrollHandler) CalculateLoanAmounts(c *fiber.Ctx) error {
+	loanType := c.Query("loan_type")
+	loanAmountStr := c.Query("loan_amount")
+	rateOfInterestStr := c.Query("rate_of_interest")
+	repaymentPeriodsStr := c.Query("repayment_periods")
+
+	if loanAmountStr == "" || repaymentPeriodsStr == "" {
+		return response.BadRequest(c, "loan_amount and repayment_periods are required")
+	}
+
+	loanAmount, err := strconv.ParseFloat(loanAmountStr, 64)
+	if err != nil {
+		return response.BadRequest(c, "invalid loan_amount")
+	}
+
+	rateOfInterest := 0.0
+	if rateOfInterestStr != "" {
+		rateOfInterest, err = strconv.ParseFloat(rateOfInterestStr, 64)
+		if err != nil {
+			return response.BadRequest(c, "invalid rate_of_interest")
+		}
+	}
+
+	repaymentPeriods, err := strconv.Atoi(repaymentPeriodsStr)
+	if err != nil {
+		return response.BadRequest(c, "invalid repayment_periods")
+	}
+
+	amounts, err := h.payrollService.CalculateLoanAmounts(c.Context(), loanType, loanAmount, rateOfInterest, repaymentPeriods)
+	if err != nil {
+		return response.BadRequest(c, err.Error())
+	}
+
+	return response.Success(c, amounts, "Loan amounts calculated successfully")
+}
+
+// CalculateNetPay calculates net pay from a salary slip
+// GET /api/method/hrms.payroll.doctype.salary_slip.salary_slip.calculate_net_pay
+func (h *PayrollHandler) CalculateNetPay(c *fiber.Ctx) error {
+	slipIDStr := c.Query("slip_id")
+
+	if slipIDStr == "" {
+		return response.BadRequest(c, "slip_id is required")
+	}
+
+	slipID, err := strconv.ParseUint(slipIDStr, 10, 32)
+	if err != nil {
+		return response.BadRequest(c, "invalid slip_id")
+	}
+
+	netPay, err := h.payrollService.CalculateNetPay(c.Context(), uint(slipID))
+	if err != nil {
+		return response.InternalServerError(c, "failed to calculate net pay")
+	}
+
+	return response.Success(c, map[string]interface{}{"net_pay": netPay}, "Net pay calculated successfully")
+}
+
+// GetPayrollSummary returns payroll summary for a period
+// GET /api/method/hrms.payroll.doctype.payroll_entry.payroll_entry.get_payroll_summary
+func (h *PayrollHandler) GetPayrollSummary(c *fiber.Ctx) error {
+	startDateStr := c.Query("start_date")
+	endDateStr := c.Query("end_date")
+	company := c.Query("company")
+
+	if startDateStr == "" || endDateStr == "" {
+		return response.BadRequest(c, "start_date and end_date are required")
+	}
+
+	startDate, err := time.Parse("2006-01-02", startDateStr)
+	if err != nil {
+		return response.BadRequest(c, "invalid start_date format, expected YYYY-MM-DD")
+	}
+
+	endDate, err := time.Parse("2006-01-02", endDateStr)
+	if err != nil {
+		return response.BadRequest(c, "invalid end_date format, expected YYYY-MM-DD")
+	}
+
+	summary, err := h.payrollService.GetPayrollSummary(c.Context(), startDate, endDate, company)
+	if err != nil {
+		return response.InternalServerError(c, "failed to get payroll summary")
+	}
+
+	return response.Success(c, summary, "Payroll summary retrieved successfully")
+}
