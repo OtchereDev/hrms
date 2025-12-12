@@ -1,22 +1,20 @@
-.PHONY: help install run build test clean migrate seed docker-up docker-down
+.PHONY: help install run build test clean docker-up docker-down lint fmt dev
 
 # Default target
 help:
 	@echo "Available commands:"
 	@echo "  make install       - Install Go dependencies"
 	@echo "  make run          - Run the API server"
-	@echo "  make run-scheduler - Run the background scheduler"
 	@echo "  make build        - Build the application"
 	@echo "  make test         - Run tests"
 	@echo "  make test-coverage - Run tests with coverage"
 	@echo "  make clean        - Clean build artifacts"
-	@echo "  make migrate      - Run database migrations"
-	@echo "  make seed         - Seed database with test data"
 	@echo "  make docker-up    - Start Docker containers"
 	@echo "  make docker-down  - Stop Docker containers"
 	@echo "  make docker-build - Build Docker image"
 	@echo "  make lint         - Run linter"
 	@echo "  make fmt          - Format code"
+	@echo "  make dev          - Start development server with hot reload"
 
 # Install dependencies
 install:
@@ -29,16 +27,10 @@ run:
 	@echo "Starting API server..."
 	go run cmd/api/main.go
 
-# Run the scheduler
-run-scheduler:
-	@echo "Starting scheduler..."
-	go run cmd/scheduler/main.go
-
 # Build the application
 build:
 	@echo "Building application..."
 	go build -o bin/api cmd/api/main.go
-	go build -o bin/scheduler cmd/scheduler/main.go
 
 # Run tests
 test:
@@ -57,16 +49,6 @@ clean:
 	@echo "Cleaning..."
 	rm -rf bin/
 	rm -f coverage.out coverage.html
-
-# Run database migrations
-migrate:
-	@echo "Running migrations..."
-	go run cmd/migrate/main.go
-
-# Seed database
-seed:
-	@echo "Seeding database..."
-	go run cmd/migrate/main.go --seed
 
 # Start Docker containers
 docker-up:
