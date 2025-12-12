@@ -103,7 +103,7 @@ func (h *LeaveHandler) ListLeaveApplications(c *fiber.Ctx) error {
 		return response.InternalServerError(c, "failed to list leave applications")
 	}
 
-	return response.SuccessWithPagination(c, leaves, total, page, pageSize, "success")
+	return response.Paginated(c, leaves, page, pageSize, total)
 }
 
 // ApproveLeaveApplication approves a leave application

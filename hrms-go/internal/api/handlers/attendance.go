@@ -100,7 +100,7 @@ func (h *AttendanceHandler) ListAttendance(c *fiber.Ctx) error {
 		return response.InternalServerError(c, "failed to list attendance")
 	}
 
-	return response.SuccessWithPagination(c, attendances, total, page, pageSize, "success")
+	return response.Paginated(c, attendances, page, pageSize, total)
 }
 
 // GetMonthlyAttendance retrieves monthly attendance for an employee

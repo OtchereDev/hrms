@@ -187,7 +187,7 @@ func (h *PerformanceHandler) ListAppraisals(c *fiber.Ctx) error {
 		return response.InternalServerError(c, "failed to list appraisals")
 	}
 
-	return response.SuccessWithPagination(c, appraisals, total, page, pageSize, "success")
+	return response.Paginated(c, appraisals, page, pageSize, total)
 }
 
 // ========== Goal Operations ==========
@@ -286,7 +286,7 @@ func (h *PerformanceHandler) ListGoals(c *fiber.Ctx) error {
 		return response.InternalServerError(c, "failed to list goals")
 	}
 
-	return response.SuccessWithPagination(c, goals, total, page, pageSize, "success")
+	return response.Paginated(c, goals, page, pageSize, total)
 }
 
 // GetActiveGoalsForEmployee retrieves active goals for an employee

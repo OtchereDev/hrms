@@ -128,7 +128,7 @@ func (h *PayrollHandler) ListSalarySlips(c *fiber.Ctx) error {
 		return response.InternalServerError(c, "failed to list salary slips")
 	}
 
-	return response.SuccessWithPagination(c, slips, total, page, pageSize, "success")
+	return response.Paginated(c, slips, page, pageSize, total)
 }
 
 // ========== Salary Structure Operations ==========
@@ -238,7 +238,7 @@ func (h *PayrollHandler) ListLoans(c *fiber.Ctx) error {
 		return response.InternalServerError(c, "failed to list loans")
 	}
 
-	return response.SuccessWithPagination(c, loans, total, page, pageSize, "success")
+	return response.Paginated(c, loans, page, pageSize, total)
 }
 
 // ========== Employee Advance Operations ==========
@@ -349,5 +349,5 @@ func (h *PayrollHandler) ListExpenseClaims(c *fiber.Ctx) error {
 		return response.InternalServerError(c, "failed to list expense claims")
 	}
 
-	return response.SuccessWithPagination(c, claims, total, page, pageSize, "success")
+	return response.Paginated(c, claims, page, pageSize, total)
 }
