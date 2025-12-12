@@ -10,10 +10,12 @@ import (
 	"time"
 
 	"github.com/OtchereDev/hrms-go/internal/api/handlers"
+	frappeHandlers "github.com/OtchereDev/hrms-go/internal/api/handlers/frappe"
 	"github.com/OtchereDev/hrms-go/internal/api/middleware"
 	"github.com/OtchereDev/hrms-go/internal/api/routes"
 	"github.com/OtchereDev/hrms-go/internal/config"
 	"github.com/OtchereDev/hrms-go/internal/core"
+	"github.com/OtchereDev/hrms-go/internal/core/frappe"
 	"github.com/OtchereDev/hrms-go/internal/core/services/auth"
 	"github.com/OtchereDev/hrms-go/pkg/logger"
 	"github.com/gofiber/fiber/v2"
@@ -72,6 +74,17 @@ func main() {
 	payrollHandler := handlers.NewPayrollHandler(db.DB)
 	performanceHandler := handlers.NewPerformanceHandler(db.DB)
 
+	// Initialize Frappe compatibility layer
+	doctypeService := frappe.NewDocTypeService(db.DB)
+	resourceHandler := frappeHandlers.NewResourceHandler(doctypeService)
+	methodHandler := frappeHandlers.NewMethodHandler(
+		db.DB,
+		attendanceHandler,
+		leaveHandler,
+		payrollHandler,
+		performanceHandler,
+	)
+
 	// Create Fiber app
 	app := fiber.New(fiber.Config{
 		AppName:      cfg.App.Name,
@@ -113,7 +126,7 @@ func main() {
 	}))
 
 	// Setup routes
-	routes.SetupRoutes(app, authHandler, employeeHandler, attendanceHandler, leaveHandler, payrollHandler, performanceHandler, authMiddleware, permMiddleware)
+	routes.SetupRoutes(app, authHandler, employeeHandler, attendanceHandler, leaveHandler, payrollHandler, performanceHandler, resourceHandler, methodHandler, authMiddleware, permMiddleware)
 
 	// Start server
 	addr := fmt.Sprintf("%s:%d", cfg.Server.Host, cfg.Server.Port)

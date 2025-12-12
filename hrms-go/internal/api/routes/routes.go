@@ -2,6 +2,7 @@ package routes
 
 import (
 	"github.com/OtchereDev/hrms-go/internal/api/handlers"
+	frappeHandlers "github.com/OtchereDev/hrms-go/internal/api/handlers/frappe"
 	"github.com/OtchereDev/hrms-go/internal/api/middleware"
 	"github.com/gofiber/fiber/v2"
 )
@@ -15,14 +16,48 @@ func SetupRoutes(
 	leaveHandler *handlers.LeaveHandler,
 	payrollHandler *handlers.PayrollHandler,
 	performanceHandler *handlers.PerformanceHandler,
+	resourceHandler *frappeHandlers.ResourceHandler,
+	methodHandler *frappeHandlers.MethodHandler,
 	authMiddleware *middleware.AuthMiddleware,
 	permMiddleware *middleware.PermissionMiddleware,
 ) {
 	// API version prefix
 	api := app.Group("/api")
 
+	// ========== Frappe Compatibility Layer ==========
+	// Generic DocType CRUD operations (Frappe-compatible)
+	// Routes: /api/resource/:doctype[/:name]
+	resource := api.Group("/resource")
+	resourceAuth := resource.Use(authMiddleware.Authenticate)
+
+	// GET /api/resource/:doctype - List documents
+	resourceAuth.Get("/:doctype", resourceHandler.GetList)
+
+	// GET /api/resource/:doctype/:name - Get single document
+	resourceAuth.Get("/:doctype/:name", resourceHandler.Get)
+
+	// POST /api/resource/:doctype - Create document
+	resourceAuth.Post("/:doctype", resourceHandler.Insert)
+
+	// PUT /api/resource/:doctype/:name - Update document
+	resourceAuth.Put("/:doctype/:name", resourceHandler.Update)
+
+	// DELETE /api/resource/:doctype/:name - Delete document
+	resourceAuth.Delete("/:doctype/:name", resourceHandler.Delete)
+
+	// POST /api/resource/:doctype/:name/submit - Submit document (workflow)
+	resourceAuth.Post("/:doctype/:name/submit", resourceHandler.Submit)
+
+	// POST /api/resource/:doctype/:name/cancel - Cancel document (workflow)
+	resourceAuth.Post("/:doctype/:name/cancel", resourceHandler.Cancel)
+
 	// Method routes (Frappe-compatible API pattern)
 	method := api.Group("/method")
+
+	// Frappe method call router (handles all /api/method/* calls)
+	// This routes Frappe method paths to our handlers
+	methodAuth := method.Use(authMiddleware.Authenticate)
+	methodAuth.All("/*", methodHandler.Call)
 
 	// Public authentication routes
 	method.Post("/login", authHandler.Login)
