@@ -18,6 +18,7 @@ import (
 	"github.com/OtchereDev/hrms-go/internal/core/frappe"
 	"github.com/OtchereDev/hrms-go/internal/core/services/auth"
 	"github.com/OtchereDev/hrms-go/internal/core/services/holiday"
+	"github.com/OtchereDev/hrms-go/internal/core/services/session"
 	"github.com/OtchereDev/hrms-go/internal/core/services/shift"
 	"github.com/OtchereDev/hrms-go/pkg/logger"
 	"github.com/gofiber/fiber/v2"
@@ -66,8 +67,14 @@ func main() {
 	holidayService := holiday.NewHolidayService(db.DB)
 	shiftService := shift.NewShiftService(db.DB)
 
+	// Initialize session service for Frappe frontend compatibility
+	sessionStore := session.NewMemoryStore()
+	sessionService := session.NewService(sessionStore, 24*time.Hour)
+
 	// Initialize middleware
 	authMiddleware := middleware.NewAuthMiddleware(jwtService, authService)
+	sessionMiddleware := middleware.NewSessionMiddleware(sessionService)
+	dualAuthMiddleware := middleware.NewDualAuthMiddleware(authMiddleware, sessionMiddleware)
 	permMiddleware := middleware.NewPermissionMiddleware(db.DB)
 
 	// Initialize handlers
@@ -93,6 +100,7 @@ func main() {
 		employeeHandler,
 		shiftHandler,
 	)
+	frappeAuthHandler := frappeHandlers.NewAuthHandler(authService, sessionService)
 
 	// Create Fiber app
 	app := fiber.New(fiber.Config{
@@ -135,7 +143,7 @@ func main() {
 	}))
 
 	// Setup routes
-	routes.SetupRoutes(app, authHandler, employeeHandler, attendanceHandler, leaveHandler, payrollHandler, performanceHandler, resourceHandler, methodHandler, authMiddleware, permMiddleware)
+	routes.SetupRoutes(app, authHandler, employeeHandler, attendanceHandler, leaveHandler, payrollHandler, performanceHandler, resourceHandler, methodHandler, frappeAuthHandler, authMiddleware, sessionMiddleware, dualAuthMiddleware, permMiddleware)
 
 	// Start server
 	addr := fmt.Sprintf("%s:%d", cfg.Server.Host, cfg.Server.Port)

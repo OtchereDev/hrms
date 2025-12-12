@@ -18,7 +18,10 @@ func SetupRoutes(
 	performanceHandler *handlers.PerformanceHandler,
 	resourceHandler *frappeHandlers.ResourceHandler,
 	methodHandler *frappeHandlers.MethodHandler,
+	frappeAuthHandler *frappeHandlers.AuthHandler,
 	authMiddleware *middleware.AuthMiddleware,
+	sessionMiddleware *middleware.SessionMiddleware,
+	dualAuthMiddleware *middleware.DualAuthMiddleware,
 	permMiddleware *middleware.PermissionMiddleware,
 ) {
 	// API version prefix
@@ -27,8 +30,9 @@ func SetupRoutes(
 	// ========== Frappe Compatibility Layer ==========
 	// Generic DocType CRUD operations (Frappe-compatible)
 	// Routes: /api/resource/:doctype[/:name]
+	// Use dual auth to support both JWT (API clients) and sessions (Frappe frontend)
 	resource := api.Group("/resource")
-	resourceAuth := resource.Use(authMiddleware.Authenticate)
+	resourceAuth := resource.Use(dualAuthMiddleware.Authenticate)
 
 	// GET /api/resource/:doctype - List documents
 	resourceAuth.Get("/:doctype", resourceHandler.GetList)
@@ -54,18 +58,27 @@ func SetupRoutes(
 	// Method routes (Frappe-compatible API pattern)
 	method := api.Group("/method")
 
-	// Frappe method call router (handles all /api/method/* calls)
-	// This routes Frappe method paths to our handlers
-	methodAuth := method.Use(authMiddleware.Authenticate)
-	methodAuth.All("/*", methodHandler.Call)
+	// ========== Frappe Authentication Routes (Session-based) ==========
+	// These routes support Frappe frontend's cookie-based authentication
+	method.Post("/login", frappeAuthHandler.Login)
+	method.Post("/logout", sessionMiddleware.Authenticate, frappeAuthHandler.Logout)
 
-	// Public authentication routes
-	method.Post("/login", authHandler.Login)
-	method.Post("/logout", authMiddleware.Authenticate, authHandler.Logout)
+	// Frappe session info endpoints
+	method.Get("/frappe.auth.get_logged_user", sessionMiddleware.RequireSession, frappeAuthHandler.GetLoggedUser)
+	method.Get("/frappe.sessions.get_session_info", sessionMiddleware.Authenticate, frappeAuthHandler.GetSessionInfo)
+
+	// JWT authentication routes (for API clients)
+	method.Post("/jwt/login", authHandler.Login)
+	method.Post("/jwt/logout", authMiddleware.Authenticate, authHandler.Logout)
 	method.Post("/refresh_token", authHandler.RefreshToken)
 
-	// Protected routes - require authentication
-	authenticated := method.Use(authMiddleware.Authenticate)
+	// Frappe method call router (handles all /api/method/* calls)
+	// Use dual auth to support both JWT and sessions
+	methodAuth := method.Use(dualAuthMiddleware.Authenticate)
+	methodAuth.All("/*", methodHandler.Call)
+
+	// Protected routes - require authentication (dual auth)
+	authenticated := method.Use(dualAuthMiddleware.Authenticate)
 
 	// User info routes
 	authenticated.Get("/hrms.api.get_current_user_info", authHandler.GetCurrentUserInfo)
@@ -375,7 +388,7 @@ func SetupRoutes(
 	// Health check route
 	app.Get("/health", func(c *fiber.Ctx) error {
 		return c.JSON(fiber.Map{
-			"status": "ok",
+			"status":  "ok",
 			"service": "hrms-api",
 		})
 	})
