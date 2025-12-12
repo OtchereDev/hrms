@@ -15,6 +15,22 @@ A complete rewrite of the Frappe HRMS system in Go using Fiber framework, GORM, 
 - 🚧 **Reports** - PDF/Excel export (Planned)
 - 🚧 **Real-time Updates** - WebSocket support (Planned)
 
+## Frappe HRMS Compatibility
+
+This backend implements **full API compatibility** with Frappe HRMS frontend, allowing the original Frappe frontend to work seamlessly without modifications.
+
+**Key Features:**
+- ✅ Session-based authentication (cookie support)
+- ✅ Dual authentication (JWT + sessions)
+- ✅ Frappe response format
+- ✅ DocType CRUD operations
+- ✅ Advanced filtering with operators
+- ✅ Metadata endpoints (get_meta)
+- ✅ Method routing (100+ Frappe methods)
+- ✅ Utility functions (holidays, shifts, payroll)
+
+📖 **[Read Full Compatibility Guide →](docs/FRAPPE_COMPATIBILITY.md)**
+
 ## Technology Stack
 
 ### Backend
