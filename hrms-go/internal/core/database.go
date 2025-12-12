@@ -8,6 +8,7 @@ import (
 	"github.com/OtchereDev/hrms-go/internal/config"
 	"github.com/OtchereDev/hrms-go/internal/core/models/base"
 	"github.com/OtchereDev/hrms-go/internal/core/models/hr"
+	"github.com/OtchereDev/hrms-go/internal/core/models/payroll"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
@@ -151,10 +152,76 @@ func (db *Database) AutoMigrate() error {
 		return fmt.Errorf("failed to migrate employee lifecycle models: %w", err)
 	}
 
-	// TODO: Add more model migrations as we create them
-	// &payroll.SalarySlip{},
-	// &payroll.SalaryStructure{},
-	// etc.
+	// Migrate Performance Management models
+	if err := db.DB.AutoMigrate(
+		&hr.Appraisal{},
+		&hr.AppraisalGoal{},
+		&hr.AppraisalTemplate{},
+		&hr.AppraisalTemplateGoal{},
+		&hr.AppraisalTemplateRating{},
+		&hr.AppraisalCycle{},
+		&hr.Goal{},
+		&hr.EmployeePerformanceFeedback{},
+		&hr.EmployeePerformanceFeedbackCriteria{},
+		&hr.EmployeeSkillMap{},
+		&hr.EmployeeSkillMapSkill{},
+		&hr.EmployeeSkillMapTraining{},
+	); err != nil {
+		return fmt.Errorf("failed to migrate performance management models: %w", err)
+	}
+
+	// Migrate Salary models
+	if err := db.DB.AutoMigrate(
+		&payroll.SalaryComponent{},
+		&payroll.SalaryComponentAccount{},
+		&payroll.SalaryStructure{},
+		&payroll.SalaryDetail{},
+		&payroll.SalaryStructureAssignment{},
+		&payroll.SalarySlip{},
+		&payroll.AdditionalSalary{},
+		&payroll.RetentionBonus{},
+		&payroll.EmployeeIncentive{},
+	); err != nil {
+		return fmt.Errorf("failed to migrate salary models: %w", err)
+	}
+
+	// Migrate Payroll models
+	if err := db.DB.AutoMigrate(
+		&payroll.PayrollEntry{},
+		&payroll.PayrollEmployeeDetail{},
+		&payroll.PayrollDeductionDetail{},
+		&payroll.PayrollPeriod{},
+		&payroll.Gratuity{},
+		&payroll.GratuitySlab{},
+		&payroll.GratuitySlabDetail{},
+		&payroll.Loan{},
+		&payroll.LoanRepaymentSchedule{},
+		&payroll.LoanType{},
+		&payroll.EmployeeAdvance{},
+		&payroll.ExpenseClaim{},
+		&payroll.ExpenseClaimDetail{},
+		&payroll.ExpenseClaimType{},
+	); err != nil {
+		return fmt.Errorf("failed to migrate payroll models: %w", err)
+	}
+
+	// Migrate Tax models
+	if err := db.DB.AutoMigrate(
+		&payroll.IncomeTaxSlab{},
+		&payroll.IncomeTaxSlabDetail{},
+		&payroll.IncomeTaxSlabOtherTax{},
+		&payroll.EmployeeTaxExemptionDeclaration{},
+		&payroll.EmployeeTaxExemptionDeclarationCategory{},
+		&payroll.EmployeeTaxExemptionProofSubmission{},
+		&payroll.EmployeeTaxExemptionProofDetail{},
+		&payroll.EmployeeOtherIncome{},
+		&payroll.TaxWithholdingCategory{},
+		&payroll.EmployeeBenefitApplication{},
+		&payroll.EmployeeBenefitApplicationDetail{},
+		&payroll.EmployeeBenefitClaim{},
+	); err != nil {
+		return fmt.Errorf("failed to migrate tax models: %w", err)
+	}
 
 	log.Println("Database migrations completed successfully")
 	return nil
