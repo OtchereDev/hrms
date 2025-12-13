@@ -149,7 +149,7 @@ func (h *MethodHandler) Call(c *fiber.Ctx) error {
 	case "hrms.payroll.doctype.employee_advance.employee_advance.create":
 		return h.wrapHandler(h.payrollHandler.CreateEmployeeAdvance)(c)
 	case "hrms.payroll.doctype.employee_advance.employee_advance.approve":
-		return h.wrapHandler(h.payrollHandler.ApproveEmployeeAdvance)(c)
+		return h.wrapHandler(h.payrollHandler.ApproveAdvance)(c)
 
 	// Expense Claim methods
 	case "hrms.payroll.doctype.expense_claim.expense_claim.create":

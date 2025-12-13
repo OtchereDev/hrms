@@ -24,44 +24,38 @@ func NewAuthHandler(authService *auth.AuthService, sessionService *session.Servi
 	}
 }
 
-// LoginRequest represents a Frappe login request
-type LoginRequest struct {
-	Usr string `json:"usr"`
-	Pwd string `json:"pwd"`
-}
-
 // Login handles Frappe-style login
 // POST /api/method/login
 func (h *AuthHandler) Login(c *fiber.Ctx) error {
-	var req LoginRequest
+	var req auth.LoginRequest
 
 	// Try JSON body first
 	if err := c.BodyParser(&req); err != nil {
 		// Try form data
-		req.Usr = c.FormValue("usr")
-		req.Pwd = c.FormValue("pwd")
+		req.Email = c.FormValue("usr")
+		req.Password = c.FormValue("pwd")
 	}
 
-	if req.Usr == "" || req.Pwd == "" {
+	if req.Email == "" || req.Password == "" {
 		return frappeCore.SendBadRequest(c, "username and password are required")
 	}
 
 	// Authenticate user
-	user, err := h.authService.Login(c.Context(), req.Usr, req.Pwd)
+	ipAddress := c.IP()
+	userAgent := c.Get("User-Agent")
+
+	loginResp, err := h.authService.Login(c.Context(), req, ipAddress, userAgent)
 	if err != nil {
 		return frappeCore.SendAuthenticationError(c, "Invalid username or password")
 	}
 
 	// Create session
-	ipAddress := c.IP()
-	userAgent := c.Get("User-Agent")
-
 	sess, err := h.sessionService.Create(
 		c.Context(),
-		fmt.Sprintf("%d", user.ID),
-		user.Username,
-		user.FullName,
-		user.Email,
+		fmt.Sprintf("%d", loginResp.User.ID),
+		loginResp.User.Username,
+		loginResp.User.FullName,
+		loginResp.User.Email,
 		ipAddress,
 		userAgent,
 	)

@@ -18,6 +18,7 @@ type Attendance struct {
 
 	// Status
 	Status           string     `gorm:"size:50;not null;index" json:"status"` // Present, Absent, On Leave, Half Day, Work From Home
+	HalfDayStatus    string     `gorm:"size:50" json:"half_day_status"` // First Half, Second Half
 
 	// Timing
 	InTime           *time.Time `json:"in_time"`
@@ -209,7 +210,9 @@ type ShiftRequest struct {
 	Reason           string     `gorm:"type:text" json:"reason"`
 
 	// Workflow
+	Status           string     `gorm:"size:50;default:'Pending'" json:"status"` // Draft, Pending, Approved, Rejected
 	WorkflowState    string     `gorm:"size:50" json:"workflow_state"` // Draft, Pending, Approved, Rejected
+	ApprovedBy       string     `gorm:"size:255" json:"approved_by"`
 	Approver         string     `gorm:"size:255" json:"approver"`
 	ApprovalDate     *time.Time `json:"approval_date"`
 }
