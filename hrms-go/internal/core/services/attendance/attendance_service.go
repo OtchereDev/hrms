@@ -444,10 +444,10 @@ func (s *AttendanceService) autoMarkAttendanceFromCheckins(ctx context.Context, 
 // GetUnmarkedDays returns days without attendance records for an employee
 func (s *AttendanceService) GetUnmarkedDays(ctx context.Context, employee string, fromDate, toDate time.Time, excludeHolidays bool) ([]time.Time, error) {
 	// Get all attendance records for the period
-	filter := repositories.AttendanceFilter{
-		Employee:  employee,
-		StartDate: &fromDate,
-		EndDate:   &toDate,
+	filter := repositories.AttendanceFilters{
+		Employee: employee,
+		FromDate: fromDate,
+		ToDate:   toDate,
 	}
 
 	attendances, _, err := s.attendanceRepo.List(ctx, filter, 1, 10000)
@@ -513,10 +513,10 @@ func (s *AttendanceService) MarkBulkAttendance(ctx context.Context, data *MarkBu
 // GetEvents returns attendance events for calendar view
 func (s *AttendanceService) GetEvents(ctx context.Context, employee string, start, end time.Time, filters map[string]interface{}) ([]map[string]interface{}, error) {
 	// Build attendance filter
-	filter := repositories.AttendanceFilter{
-		Employee:  employee,
-		StartDate: &start,
-		EndDate:   &end,
+	filter := repositories.AttendanceFilters{
+		Employee: employee,
+		FromDate: start,
+		ToDate:   end,
 	}
 
 	// Apply additional filters if provided

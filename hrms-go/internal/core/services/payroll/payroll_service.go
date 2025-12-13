@@ -503,8 +503,8 @@ func (s *PayrollService) GetSalarySlipDetails(ctx context.Context, employee stri
 	// Get salary slip for the period
 	filter := repositories.SalarySlipFilters{
 		Employee:  employee,
-		StartDate: &startDate,
-		EndDate:   &endDate,
+		StartDate: startDate,
+		EndDate:   endDate,
 	}
 
 	slips, _, err := s.salarySlipRepo.ListSlips(ctx, filter, 1, 1)
@@ -589,8 +589,8 @@ func (s *PayrollService) CalculateNetPay(ctx context.Context, slipID uint) (floa
 // GetPayrollSummary returns payroll summary for a period
 func (s *PayrollService) GetPayrollSummary(ctx context.Context, startDate, endDate time.Time, company string) (map[string]interface{}, error) {
 	filter := repositories.SalarySlipFilters{
-		StartDate: &startDate,
-		EndDate:   &endDate,
+		StartDate: startDate,
+		EndDate:   endDate,
 	}
 
 	slips, total, err := s.salarySlipRepo.ListSlips(ctx, filter, 1, 10000)
