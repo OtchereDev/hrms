@@ -501,13 +501,13 @@ func (s *PayrollService) ListExpenseClaims(ctx context.Context, filters reposito
 // GetSalarySlipDetails returns detailed breakdown of a salary slip
 func (s *PayrollService) GetSalarySlipDetails(ctx context.Context, employee string, startDate, endDate time.Time) (map[string]interface{}, error) {
 	// Get salary slip for the period
-	filter := repositories.SalarySlipFilter{
+	filter := repositories.SalarySlipFilters{
 		Employee:  employee,
 		StartDate: &startDate,
 		EndDate:   &endDate,
 	}
 
-	slips, _, err := s.salaryRepo.ListSlips(ctx, filter, 1, 1)
+	slips, _, err := s.salarySlipRepo.ListSlips(ctx, filter, 1, 1)
 	if err != nil {
 		return nil, err
 	}
@@ -575,7 +575,7 @@ func (s *PayrollService) CalculateLoanAmounts(ctx context.Context, loanType stri
 
 // CalculateNetPay calculates net pay from a salary slip
 func (s *PayrollService) CalculateNetPay(ctx context.Context, slipID uint) (float64, error) {
-	slip, err := s.salaryRepo.GetSlip(ctx, slipID)
+	slip, err := s.salarySlipRepo.GetSlip(ctx, slipID)
 	if err != nil {
 		return 0, err
 	}
@@ -588,12 +588,12 @@ func (s *PayrollService) CalculateNetPay(ctx context.Context, slipID uint) (floa
 
 // GetPayrollSummary returns payroll summary for a period
 func (s *PayrollService) GetPayrollSummary(ctx context.Context, startDate, endDate time.Time, company string) (map[string]interface{}, error) {
-	filter := repositories.SalarySlipFilter{
+	filter := repositories.SalarySlipFilters{
 		StartDate: &startDate,
 		EndDate:   &endDate,
 	}
 
-	slips, total, err := s.salaryRepo.ListSlips(ctx, filter, 1, 10000)
+	slips, total, err := s.salarySlipRepo.ListSlips(ctx, filter, 1, 10000)
 	if err != nil {
 		return nil, err
 	}
